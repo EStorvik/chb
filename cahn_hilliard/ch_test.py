@@ -54,11 +54,11 @@ parameters["form_compiler"]["cpp_optimize"] = True
 # Verbosity level
 set_log_level(50)
 
-dt = 1.0e-5        # time-step size
-num_steps = 50     # number of time steps
+dt = 5.0e-6        # time-step size
+num_steps = 3     # number of time steps
 T = dt* num_steps  # final time
 m = 1              # mobility
-ell = 1.0e-2       # regularization width
+ell = 5.0e-3       # regularization width
 gamma = 1          # surface tension
 max_iter = 100     # max Newton iterations
 tol = 1e-6         # tolerance for Newton
