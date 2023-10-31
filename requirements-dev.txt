@@ -1,0 +1,8 @@
+pytest>=7.1
+black
+isort
+flake8
+mypy
+meshio
+deepdiff
+pyamg
