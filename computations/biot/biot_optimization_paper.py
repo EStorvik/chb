@@ -1,7 +1,7 @@
 import dolfin as df
 from dolfin import dx, dot, inner, sym, grad, div, sqrt, assemble
 
-from rhs_biot_manufactured import RHSManufacturedBiot
+import chb
 
 # Verbosity level
 df.set_log_level(50)
@@ -66,7 +66,6 @@ u_n.interpolate(df.Constant((0.0, 0.0)))
 def boundary(x, on_boundary):
     return on_boundary
 
-
 # Pressure
 zero_p = df.Constant(0.0)
 bc_f = df.DirichletBC(V_f, zero_p, boundary)
@@ -77,7 +76,7 @@ bc_e = df.DirichletBC(V_e, zero_u, boundary)
 
 # RHS
 p_ref = 1.0e-12
-manufsol = RHSManufacturedBiot(
+manufsol = chb.RHSManufacturedBiot(
     alpha, compressibility, permeability, lame_mu, lame_lambda, p_ref, t
 )
 S_f = manufsol.S_f
