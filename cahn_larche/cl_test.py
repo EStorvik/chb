@@ -1,6 +1,8 @@
 import dolfin as df
 from dolfin import dx, grad, dot, div, assemble, sqrt, sym, inner
 
+import os
+
 import random
 
 #import chb
@@ -15,7 +17,16 @@ class InitialConditions(df.UserExpression):
         values[1] = 0.0
     def value_shape(self):
         return (2,)
-    
+
+
+class StiffnessTensor():
+    def __init__(self):
+        self.c1111 = 1
+        self.c1112 = 1
+        self.c1122
+        self.c1121
+        pass
+
 
 
 class DoubleWellPotential:
@@ -51,7 +62,7 @@ T = dt*num_steps
 
 # Define Newton solver parameters
 max_iter_newton = 20
-tol = 1.0e-8
+tol_newton = 1.0e-8
 
 # Define splitting iterations
 max_iter_split = 20
@@ -104,6 +115,8 @@ ch_n.interpolate(initial_conditions)
 u_n = df.Function(V_e)  # current solution
 u_n.interpolate(zero)
 
+u_prev = df.Function(V_e)
+
 
 Fpf = pf*eta_pf*dx-pf_old*eta_pf*dx + dt*m*dot(grad(mu),grad(eta_pf))*dx
 Fmu = mu*eta_mu*dx-gamma*ell*dot(grad(pf),grad(eta_mu))*dx-(gamma/ell)*(psi.prime(pf_prev)*eta_mu*dx \
@@ -116,18 +129,26 @@ F_e = stiffness*(inner(sym(grad(u)), sym(grad(eta_u)))*dx - ksi*pf_n*div(eta_u)*
 a_e, L_e = df.lhs(F_e), df.rhs(F_e)
 
 
-
+output_file = df.File("/home/erlend/src/fenics/cdb_output/cl_test_output.pvd", "compressed")
 
 # Time loop
 
 for i in range(num_steps):
     ch_old.assign(ch_n)
 
-    for j in range(max_iter_newton):
-        ch_prev.assign(ch_n)
-        u_n.assign(u_n)
-        df.solve(a_ch == L_ch, ch_n)
-        increment_L2 = sqrt(assemble((ch_n-ch_prev)**2*dx))
-        if increment_L2 < tol:
-            print(f"Newton terminated after {j} iterations at timestep {i}.")
-            break
+    for j in range(max_iter_split):
+        u_prev.assign(u_n)
+        for k in range(max_iter_newton):
+            ch_prev.assign(ch_n)
+            df.solve(a_ch == L_ch, ch_n)
+            increment_L2 = sqrt(assemble((ch_n-ch_prev)**2*dx))
+            if increment_L2 < tol_newton:
+                print(f"Newton terminated after {k} iterations at timestep {i}, split {j}.")
+                break
+
+        df.solve(a_e == L_e, u_n, bc)
+
+        increment_u = sqrt(assemble((u_n-u_prev)**2*dx))
+        if increment_u <tol_split:
+            print(f"Splitting method after {j} iterations at timestep {i}.")
+    output_file << ch_n
