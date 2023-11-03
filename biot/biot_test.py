@@ -7,13 +7,13 @@ from rhs_biot_manufactured import RHSManufacturedBiot
 df.set_log_level(50)
 
 # Flow material parameters
-compressibility = 1
-permeability = 1
+compressibility = 1.0e11
+permeability = 1.0e-13
 
 # Elasticity parameters
-lame_mu = 1
-lame_lambda = 1
-K_dr = 2*lame_mu+lame_lambda
+lame_mu = 41.667e9
+lame_lambda = 27.778e9
+K_dr = lame_mu+lame_lambda
 
 # Coupling coefficients
 alpha = 1
@@ -25,9 +25,9 @@ num_time_steps = 10
 T = dt*num_time_steps
 
 # Splitting parameters
-num_split_steps = 20
-tol_split = 1e-8
-stabilization = alpha/(2*K_dr)
+num_split_steps = 50
+tol_split = 1e-6
+stabilization = alpha**2/(2*K_dr)
 
 # Spatial discretization
 nx = ny = 64
@@ -74,7 +74,8 @@ zero_u = df.Constant((0.0, 0.0))
 bc_e = df.DirichletBC(V_e, zero_u, boundary)
 
 # RHS
-manufsol = RHSManufacturedBiot(alpha, compressibility, permeability, lame_mu, lame_lambda, t)
+p_ref = 1.0e-12
+manufsol = RHSManufacturedBiot(alpha, compressibility, permeability, lame_mu, lame_lambda, p_ref, t)
 S_f = manufsol.S_f
 f = manufsol.f
 
@@ -113,10 +114,11 @@ for i in range(num_time_steps):
         df.solve(A_f == L_f, p_n, bc_f)
         df.solve(A_e == L_e, u_n, bc_e)
 
-        increment = sqrt(assemble((p_n-p_prev)**2*dx))
+        increment = sqrt(assemble((p_n-p_prev)**2*dx))/sqrt(assemble(p_n**2*dx))
         print(f"Solved at splitting {j} time step {i} with increment {increment}:")
 
         if increment< tol_split:
+            print(f"Tolerance reached")
             break
     
     output_file_p << p_n

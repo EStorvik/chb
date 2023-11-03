@@ -3,9 +3,10 @@ import sympy as sym
 
 x, y, t = sym.symbols("x[0], x[1], t")
 
-M, alpha, kappa, lame_mu, lame_lambda = sym.symbols("M, alpha, kappa, lame_mu, lame_lambda")
+M, alpha, kappa, lame_mu, lame_lambda, p_ref = sym.symbols("M, alpha, kappa, lame_mu, lame_lambda, p_ref")
 
-p = t*x*(x-1)*y*(y-1)
+
+p = t*x*(x-1)*y*(y-1)/p_ref
 ux = t*x*(x-1)*y*(y-1)
 uy = t*x*(x-1)*y*(y-1)
 
@@ -27,4 +28,4 @@ laplace_p = sym.diff(sym.diff(p,x),x)+sym.diff(sym.diff(p,y),y)
 S_f = sym.diff(p/M+alpha*divu,t)-kappa*laplace_p
 f_1 = -(2*lame_mu*diveps1+lame_lambda*divdivuI1)+alpha*sym.diff(p,x)
 f_2 = -(2*lame_mu*diveps2+lame_lambda*divdivuI2)+alpha*sym.diff(p,y)
-print(S_f)
+print(f_2)
