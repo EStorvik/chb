@@ -1,5 +1,6 @@
-import chb
 import dolfin as df
+
+import chb
 
 
 # Define functions

@@ -1,9 +1,8 @@
-import dolfin as df
-from dolfin import dx, grad, dot, div, assemble, sqrt, sym, inner
-
 import os
-
 import random
+
+import dolfin as df
+from dolfin import assemble, div, dot, dx, grad, inner, sqrt, sym
 
 # import chb
 

@@ -1,9 +1,8 @@
 import random
-from dolfin import *
 
-
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+from dolfin import *
 
 
 class InitialConditions(UserExpression):

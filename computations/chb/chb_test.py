@@ -2,8 +2,6 @@ import dolfin as df
 
 import chb
 
-
-
 # Define material parameters
 
 # CH

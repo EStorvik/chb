@@ -1,6 +1,6 @@
 import random
 
-from dolfin import UserExpression, MPI
+from dolfin import MPI, UserExpression
 
 
 class InitialConditions(UserExpression):

@@ -1,5 +1,5 @@
 import dolfin as df
-from dolfin import dx, dot, inner, sym, grad, div, sqrt, assemble
+from dolfin import assemble, div, dot, dx, grad, inner, sqrt, sym
 
 import chb
 
@@ -65,6 +65,7 @@ u_n.interpolate(df.Constant((0.0, 0.0)))
 # Boundary conditions
 def boundary(x, on_boundary):
     return on_boundary
+
 
 # Pressure
 zero_p = df.Constant(0.0)
