@@ -3,7 +3,7 @@ import random
 from dolfin import MPI, UserExpression
 
 
-class InitialConditions(UserExpression):
+class RandomInitialConditions(UserExpression):
     def __init__(self, **kwargs):
         random.seed(2 + MPI.rank(MPI.comm_world))
         super().__init__(**kwargs)

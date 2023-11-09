@@ -7,6 +7,7 @@ from dolfin import sym, grad, dx
 from ufl_legacy import indices
 import numpy as np
 from warnings import warn
+import chb
 
 
 
@@ -42,4 +43,7 @@ class StiffnessTensor():
     def __call__(self, u, v):
         i, j, k, l = indices(4)
         return (self.stiffness_tensor[i, j, k, l] * sym(grad(u))[k, l] * sym(grad(v))[i, j])
+    
+
+    
 
