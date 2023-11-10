@@ -22,26 +22,20 @@ swelling = 0.3
 # Flow
 compressibility0 = 1
 compressibility1 = 0.1
-def M(pf):
-    return compressibility0 + interpolator(pf)*(compressibility1-compressibility0)
-def Mprime(pf):
-    return interpolator.prime(pf)*(compressibility1-compressibility0)
+M = chb.NonlinearCompressibility(compressibility0, compressibility1)
 
 permeability0 = 1
 permeability1 = 0.1
-def k(pf):
-    return permeability0 + interpolator(pf)*(permeability1-permeability0)
-def kprime(pf):
-    return interpolator.prime(pf)*(permeability1-permeability0)
+k = chb.NonlinearPermeability(permeability0, permeability1)
 
 # Coupling
 alpha0 = 1
 alpha1 = 0.5
-def alpha(pf):
-    return alpha0+interpolator(pf)*(alpha1-alpha0)
-def alphaprime(pf):
-    return interpolator.prime(pf)*(alpha1-alpha0)
+alpha = chb.NonlinearBiotCoupling(alpha0, alpha1)
 
+# Energies
+energy_h = chb.CHBHydraulicEnergy(M, alpha)
+energy_e = chb.CHBElasticEnergy(stiffness, swelling)
 
 # Spatial discretization
 nx = ny = 64
@@ -84,6 +78,7 @@ pf_inner_prev,_ = df.Function(V_ch)
 
 # Elasticity
 u_n = df.Function(V_e)
+u_prev = df.Function(V_e)
 u_old = df.Function(V_e)
 
 # Flow
@@ -117,4 +112,4 @@ p_n.interpolate(zero_f)
 # Linear variational forms
 
 F_pf = (pf-pf_old)*eta_pf*dx + mobility*dot(grad(mu), grad(eta_pf))*dx
-F_mu = mu*eta_mu*dx - gamma*ell*dot(grad(pf), grad(eta_mu))*dx - 
+F_mu = mu*eta_mu*dx - gamma*ell*dot(grad(pf), grad(eta_mu))*dx - (doublewell.prime(pf_prev)+doublewell.doubleprime(pf_prev)*(pf-pf_prev))*eta_mu*dx - (energy_e.dpf(pf_prev, u_n)+energy_e.dpf_prime(pf, u_n, pf_prev, u_prev))
