@@ -1,0 +1,4 @@
+/tmp/tmpmbmhu2_g/dolfin_expression_9576372562baec4441f35823e716b69e.cpp: In member function ‘virtual void dolfin::dolfin_expression_9576372562baec4441f35823e716b69e::eval(Eigen::Ref<Eigen::Matrix<double, -1, 1> >, Eigen::Ref<const Eigen::Matrix<double, -1, 1> >) const’:
+/tmp/tmpmbmhu2_g/dolfin_expression_9576372562baec4441f35823e716b69e.cpp:61:23: error: expected primary-expression before ‘if’
+   61 |           values[0] = if x[0] < 0.5 ? 0.0 : 1.0;
+      |                       ^~

@@ -1,6 +1,6 @@
 import dolfin as df
 
-from dolfin import dx, grad, inner, sym, dot
+from dolfin import dx, grad, inner, sym, dot, div
 
 import chb
 
@@ -37,6 +37,11 @@ alpha = chb.NonlinearBiotCoupling(alpha0, alpha1)
 energy_h = chb.CHBHydraulicEnergy(M, alpha)
 energy_e = chb.CHBElasticEnergy(stiffness, swelling)
 
+# Time discretization
+dt = 0.0001
+num_time_steps = 10
+T = dt * num_time_steps
+
 # Spatial discretization
 nx = ny = 64
 mesh = df.UnitSquareMesh(nx, ny)
@@ -48,8 +53,8 @@ P0 = df.FiniteElement("DG", mesh.ufl_cell(), 0)
 P2V = df.VectorElement("Lagrange", mesh.ufl_cell(), 1)
 
 # Function spaces
-V_ch = df.FunctionSpace(mesh, P1*P1)
-V_f = df.FunctionSpace(mesh, RT0*P0)
+V_ch = df.FunctionSpace(mesh, P1 * P1)
+V_f = df.FunctionSpace(mesh, RT0 * P0)
 V_e = df.FunctionSpace(mesh, P2V)
 
 # Test and trial functions
@@ -69,12 +74,12 @@ q, p = df.split(fl)
 
 
 # Iteration functions
-#CH
+# CH
 ch_n = df.Function(V_ch)
 pf_n, _ = df.split(ch_n)
 pf_prev, _ = df.Function(V_ch)
 pf_old, _ = df.Function(V_ch)
-pf_inner_prev,_ = df.Function(V_ch)
+pf_inner_prev, _ = df.Function(V_ch)
 
 # Elasticity
 u_n = df.Function(V_e)
@@ -82,13 +87,15 @@ u_prev = df.Function(V_e)
 u_old = df.Function(V_e)
 
 # Flow
-p_n = df.Function(V_f)
-p_old = df.Function(V_f)
-p_prev = df.Function(V_f)
+q_n, p_n = df.Function(V_f)
+q_old, p_old = df.Function(V_f)
+q_prev, p_prev = df.Function(V_f)
+
 
 # Boundary conditions
 def boundary(x, on_boundary):
     return on_boundary
+
 
 # Elasticity
 zero_e = df.Constant((0.0, 0.0))
@@ -108,8 +115,3 @@ u_n.interpolate(zero_e)
 
 # Flow
 p_n.interpolate(zero_f)
-
-# Linear variational forms
-
-F_pf = (pf-pf_old)*eta_pf*dx + mobility*dot(grad(mu), grad(eta_pf))*dx
-F_mu = mu*eta_mu*dx - gamma*ell*dot(grad(pf), grad(eta_mu))*dx - (doublewell.prime(pf_prev)+doublewell.doubleprime(pf_prev)*(pf-pf_prev))*eta_mu*dx - (energy_e.dpf(pf_prev, u_n)+energy_e.dpf_prime(pf, u_n, pf_prev, u_prev))
