@@ -24,7 +24,7 @@ class CHBManufacturedSolution:
         self.ux = t * x * (x - 1) * y * (y - 1)
         self.uy = t * x * (x - 1) * y * (y - 1)
         self.u = [self.ux, self.uy]
-        self.pf = t * x * (x - 1) * y * (y - 1)
+        self.pf = t*(1/3*x**3-1/2*x**2)*(1/3*y**3-1/2*y**2) #t * x * (x - 1) * y * (y - 1)
         self.t = 0
         self.epsu = sym.Matrix(
             [
@@ -78,6 +78,13 @@ class CHBManufacturedSolution:
         self.gradmu1 = self.gradmu[0]
         self.gradmu2 = -self.gradmu[1]
         self.gradmu3 = self.gradmu[1]
+
+        self.gradpf = sym.Matrix([sym.diff(self.pf, x), sym.diff(self.pf, y)])
+        self.gradpf0 = -self.gradpf[0]
+        self.gradpf1 = self.gradpf[0]
+        self.gradpf2 = -self.gradpf[1]
+        self.gradpf3 = self.gradpf[1]
+
 
         self.effective_stress = self.stress-alpha(self.pf)*self.p*sym.eye(2)
 
@@ -139,39 +146,51 @@ class CHBManufacturedSolution:
     def gradmu3_out(self) -> str:
         return str(sym.ccode(self.gradmu3))
     
+    def gradpf0_out(self) -> str:
+        return str(sym.ccode(self.gradpf0))
+    
+    def gradpf1_out(self) -> str:
+        return str(sym.ccode(self.gradpf1))
+    
+    def gradpf2_out(self) -> str:
+        return str(sym.ccode(self.gradpf2))
+    
+    def gradpf3_out(self) -> str:
+        return str(sym.ccode(self.gradpf3))
+    
 
 
    
 
    
-# CH
-gamma = 1.0
-ell = 1.0e-2
-mobility = 1
-doublewell = chb.DoubleWellPotential()
+# # CH
+# gamma = 1.0
+# ell = 1.0e-2
+# mobility = 1
+# doublewell = chb.DoubleWellPotential()
 
-# Elasticity
-stiffness = chb.HeterogeneousStiffnessTensor(interpolator=chb.UnboundedInterpolator())
-swelling = 0.3
+# # Elasticity
+# stiffness = chb.HeterogeneousStiffnessTensor(interpolator=chb.UnboundedInterpolator())
+# swelling = 0.3
 
-# Flow
-compressibility0 = 1
-compressibility1 = 0.1
-M = chb.NonlinearCompressibility(compressibility0, compressibility1, chb.UnboundedInterpolator())
+# # Flow
+# compressibility0 = 1
+# compressibility1 = 0.1
+# M = chb.NonlinearCompressibility(compressibility0, compressibility1, chb.UnboundedInterpolator())
 
-permeability0 = 1
-permeability1 = 0.1
-k = chb.NonlinearPermeability(permeability0, permeability1, chb.UnboundedInterpolator())
+# permeability0 = 1
+# permeability1 = 0.1
+# k = chb.NonlinearPermeability(permeability0, permeability1, chb.UnboundedInterpolator())
 
-# Coupling
-alpha0 = 1
-alpha1 = 0.5
-alpha = chb.NonlinearBiotCoupling(alpha0, alpha1, chb.UnboundedInterpolator())
+# # Coupling
+# alpha0 = 1
+# alpha1 = 0.5
+# alpha = chb.NonlinearBiotCoupling(alpha0, alpha1, chb.UnboundedInterpolator())
 
-# Energies
-energy_h = chb.CHBHydraulicEnergy(M, alpha)
-energy_e = chb.CHBElasticEnergy(stiffness, swelling)
-manufsol = CHBManufacturedSolution(doublewell, mobility, gamma, ell, M, alpha, k, stiffness, swelling)
+# # Energies
+# energy_h = chb.CHBHydraulicEnergy(M, alpha)
+# energy_e = chb.CHBElasticEnergy(stiffness, swelling)
+# manufsol = CHBManufacturedSolution(doublewell, mobility, gamma, ell, M, alpha, k, stiffness, swelling)
 
-S_f = Expression(str(sym.ccode(manufsol.S_f)), degree = 2, t = 0)
+# S_f = Expression(str(sym.ccode(manufsol.S_f)), degree = 2, t = 0)
 

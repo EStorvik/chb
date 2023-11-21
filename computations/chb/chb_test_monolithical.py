@@ -14,27 +14,27 @@ interpolator = chb.StandardInterpolator()
 # Define material parameters
 
 # CH
-gamma = 0.0
+gamma = 1.0
 ell = 1.0e0
 mobility = 1
 doublewell = chb.DoubleWellPotential()
 
 # Elasticity
 stiffness = chb.HeterogeneousStiffnessTensor(interpolator=chb.UnboundedInterpolator())
-swelling = 0
+swelling = 0.3
 
 # Flow
 compressibility0 = 1
-compressibility1 = 1
+compressibility1 = 0.5
 M = chb.NonlinearCompressibility(compressibility0, compressibility1,interpolator=chb.UnboundedInterpolator())
 
 permeability0 = 1
-permeability1 = 1
+permeability1 = 0.5
 k = chb.NonlinearPermeability(permeability0, permeability1, interpolator=chb.UnboundedInterpolator())
 
 # Coupling
 alpha0 = 1
-alpha1 = 1
+alpha1 = 0.5
 alpha = chb.NonlinearBiotCoupling(alpha0, alpha1, interpolator=chb.UnboundedInterpolator())
 
 # Energies
@@ -106,6 +106,11 @@ gradmu1 = df.Expression(manufsol.gradmu1_out(), degree=4, t=0.0)
 gradmu2 = df.Expression(manufsol.gradmu2_out(), degree=4, t=0.0)
 gradmu3 = df.Expression(manufsol.gradmu3_out(), degree=4, t=0.0)
 
+gradpf0 = df.Expression(manufsol.gradpf0_out(), degree=4, t=0.0)
+gradpf1 = df.Expression(manufsol.gradpf1_out(), degree=4, t=0.0)
+gradpf2 = df.Expression(manufsol.gradpf2_out(), degree=4, t=0.0)
+gradpf3 = df.Expression(manufsol.gradpf3_out(), degree=4, t=0.0)
+
 # Setup for Neumann data
 boundary_markers = df.MeshFunction("size_t", mesh, mesh.topology().dim()-1, 0)
 class BoundaryX0(df.SubDomain):
@@ -165,7 +170,7 @@ S_f = df.Expression(manufsol.S_f_out(), degree=4, t=0.0)
 F_pf = (
     (pf - pf_old) * eta_pf * dx
     + dt * mobility * dot(grad(mu), grad(eta_pf)) * dx
-    - dt * R * eta_pf * dx + gradmu0 * eta_pf * ds(0) + gradmu1 * eta_pf * ds(1) + gradmu2 * eta_pf * ds(2) + gradmu3 * eta_pf * ds(3)
+    - dt * R * eta_pf * dx - dt* (gradmu0 * eta_pf * ds(0) + gradmu1 * eta_pf * ds(1) + gradmu2 * eta_pf * ds(2) + gradmu3 * eta_pf * ds(3))
 )
 F_mu = (
     mu * eta_mu * dx
@@ -182,6 +187,7 @@ F_mu = (
     )
     * eta_mu
     * dx
+    + gamma*ell*(gradpf0 * eta_mu * ds(0) + gradpf1 * eta_mu * ds(1) + gradpf2 * eta_mu * ds(2) + gradpf3 * eta_mu * ds(3))
 )
 F_e = (
     energy_e.du(pf_prev, u, eta_u) * dx
