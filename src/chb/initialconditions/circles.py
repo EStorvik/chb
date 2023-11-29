@@ -1,6 +1,6 @@
 import random
 
-from dolfin import UserExpression, Expression
+from dolfin import Expression, UserExpression
 
 
 class HalfnhalfInitialConditions(UserExpression):
@@ -15,7 +15,7 @@ class HalfnhalfInitialConditions(UserExpression):
 
     def value_shape(self):
         return (self.variables,)
-    
+
     def circles(self, x):
         if x[0] < 0.5:
             return 0.0

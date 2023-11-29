@@ -1,5 +1,6 @@
 import sympy as sym
 
+"""Script for computing the right hand side of the manufactured solution for quasi static Biot Equations. Not up to current standard. Might be removed. Not priority."""
 
 def main():
     x, y, t = sym.symbols("x[0], x[1], t")

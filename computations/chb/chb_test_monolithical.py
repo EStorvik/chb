@@ -1,8 +1,7 @@
-import dolfin as df
-
-from dolfin import grad, inner, sym, dot, div
 from math import sqrt
 
+import dolfin as df
+from dolfin import div, dot, grad, inner, sym
 from ufl_legacy import Measure
 
 import chb
@@ -22,7 +21,7 @@ doublewell = chb.DoubleWellPotential()
 # Elasticity
 swelling_parameter = 0.25
 swelling = chb.Swelling(swelling_parameter)
-stiffness = chb.HeterogeneousStiffnessTensor(interpolator=interpolator, swelling = swelling)
+stiffness = chb.HeterogeneousStiffnessTensor(interpolator=interpolator)
 
 
 # Flow
@@ -43,7 +42,7 @@ alpha = chb.NonlinearBiotCoupling(alpha0, alpha1, interpolator=interpolator)
 
 # Energies
 energy_h = chb.CHBHydraulicEnergy(M, alpha)
-energy_e = chb.CHBElasticEnergy(stiffness)
+energy_e = chb.CHBElasticEnergy(stiffness, swelling=swelling)
 
 # Time discretization
 dt = 1.0e-5
@@ -104,7 +103,7 @@ bc_f = df.DirichletBC(V.sub(4), zero_f, boundary)
 
 
 # Initial condtions
-initialconditions = chb.HalfnhalfInitialConditions(variables = 7)
+initialconditions = chb.HalfnhalfInitialConditions(variables=7)
 xi_n.interpolate(initialconditions)
 
 
@@ -124,10 +123,18 @@ F_mu = (
     - gamma * ell * dot(grad(pf), grad(eta_mu)) * dx
     - gamma
     / ell
-    * (doublewell.cprime(pf_prev) + doublewell.cdoubleprime(pf_prev) * (pf - pf_prev) - doublewell.eprime(pf_old))
+    * (
+        doublewell.cprime(pf_prev)
+        + doublewell.cdoubleprime(pf_prev) * (pf - pf_prev)
+        - doublewell.eprime(pf_old)
+    )
     * eta_mu
     * dx
-    - (energy_e.dpf(pf_prev, u_prev) + energy_e.dpf_prime(pf, u, pf_prev, u_prev))
+    - (
+        energy_e.dpf(pf_prev, u_prev)
+        + energy_e.dpf_dpf(pf_prev, u_prev) * (pf - pf_prev)
+        + energy_e.dpf_deps(pf_prev, u_prev, u - u_prev)
+    )
     * eta_mu
     * dx
     - (
@@ -138,8 +145,8 @@ F_mu = (
     * dx
 )
 F_e = (
-    energy_e.du(pf_prev, u, eta_u) * dx
-    + energy_e.dpfdu(pf, pf_prev, u_prev, eta_u) * dx
+    energy_e.deps(pf_prev, u, eta_u) * dx
+    + energy_e.deps_dpf(pf_prev, u_prev, eta_u) * (pf - pf_prev) * dx
     - (alpha(pf_prev) * p + alpha.prime(pf_prev) * p_prev * (pf - pf_prev))
     * div(eta_u)
     * dx
@@ -229,4 +236,3 @@ for i in range(num_time_steps):
     output_file_mu << mu_out
     output_file_p << p_out
     output_file_u << u_out
-

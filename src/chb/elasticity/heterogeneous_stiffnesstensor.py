@@ -1,7 +1,7 @@
 from typing import Optional
 
-import numpy as np
 import dolfin as df
+import numpy as np
 from dolfin import Identity, dx, grad, sym
 from ufl_legacy import indices
 
@@ -15,10 +15,8 @@ class HeterogeneousStiffnessTensor:
         stiffness1: Optional[np.ndarray] = None,
         dim: int = 2,
         interpolator: chb.StandardInterpolator = chb.StandardInterpolator(),
-        swelling: chb.Swelling = chb.Swelling(1),
     ) -> None:
         self.interpolator = interpolator
-        self.swelling = swelling
         if stiffness0 is None:
             self.stiffness0np = np.zeros((dim, dim, dim, dim))
 
@@ -83,128 +81,36 @@ class HeterogeneousStiffnessTensor:
     def manual_prime(self, pf):
         return self.interpolator.prime(pf) * (self.stiffness1np - self.stiffness0np)
 
-    def __call__(self, u, v, phasefield):
+    def __call__(self, epsu, epsv, pf):
         i, j, k, l = indices(4)
         return (
             (
                 self.stiffness0[i, j, k, l]
-                + self.interpolator(phasefield)(
-                    self.stiffness1[i, j, k, l] - self.stiffness0[i, j, k, l]
-                )
+                + self.interpolator(pf)
+                * (self.stiffness1[i, j, k, l] - self.stiffness0[i, j, k, l])
             )
-            * (sym(grad(u))[k, l] - self.swelling(phasefield) * Identity(2)[k, l])
-            * (sym(grad(v))[i, j] - self.swelling(phasefield) * Identity(2)[i, j])
+            * epsu[k, l]
+            * epsv[i, j]
         )
 
-    def deps(self, u, v, phasefield):
+    def prime(self, epsu, epsv, pf):
         i, j, k, l = indices(4)
         return (
             (
-                self.stiffness0[i, j, k, l]
-                + self.interpolator(phasefield)*(
-                    self.stiffness1[i, j, k, l] - self.stiffness0[i, j, k, l]
-                )
+                self.interpolator.prime(pf)
+                * (self.stiffness1[i, j, k, l] - self.stiffness0[i, j, k, l])
             )
-            * (sym(grad(u))[k, l] - self.swelling(phasefield) * Identity(2)[k, l])
-            * (sym(grad(v))[i, j])
+            * epsu[k, l]
+            * epsv[i, j]
         )
 
-    def prime(self, u, v, phasefield):
+    def doubleprime(self, epsu, epsv, pf):
         i, j, k, l = indices(4)
         return (
             (
-                self.interpolator.prime(phasefield)*(
-                    self.stiffness1[i, j, k, l] - self.stiffness0[i, j, k, l]
-                )
+                self.interpolator.doubleprime(pf)
+                * (self.stiffness1[i, j, k, l] - self.stiffness0[i, j, k, l])
             )
-            * (sym(grad(u))[k, l] - self.swelling(phasefield) * Identity(2)[k, l])
-            * (sym(grad(v))[i, j] - self.swelling(phasefield) * Identity(2)[i, j])
-        )
-
-    def doubleprime(self, u, v, phasefield):
-        i, j, k, l = indices(4)
-        return (
-            (
-                self.interpolator.doubleprime(phasefield)*(
-                    self.stiffness1[i, j, k, l] - self.stiffness0[i, j, k, l]
-                )
-            )
-            * (sym(grad(u))[k, l] - self.swelling(phasefield) * Identity(2)[k, l])
-            * (sym(grad(v))[i, j] - self.swelling(phasefield) * Identity(2)[i, j])
-        )
-
-    def idStress(self, u, pf):
-        i, j, k, l = indices(4)
-        return (
-            (
-                self.stiffness0[i, j, k, l]
-                + self.interpolator(pf)*(
-                    self.stiffness1[i, j, k, l] - self.stiffness0[i, j, k, l]
-                )
-            )
-            * (sym(grad(u))[k, l] - self.swelling(pf) * Identity(2)[k, l])
-            * (self.swelling.prime() * Identity(2)[i, j])
-        )
-
-    def idStressPrime(self, u, pf):
-        i, j, k, l = indices(4)
-        return (
-            (
-                self.interpolator.prime(pf)*(
-                    self.stiffness1[i, j, k, l] - self.stiffness0[i, j, k, l]
-                )
-            )
-            * (sym(grad(u))[k, l] - self.swelling(pf) * Identity(2)[k, l])
-            * (self.swelling.prime() * Identity(2)[i, j])
-        )
-
-    def idIdStiffness(self, pf):
-        i, j, k, l = indices(4)
-        return (
-            (
-                self.stiffness0[i, j, k, l]
-                + self.interpolator(pf)*(
-                    self.stiffness1[i, j, k, l] - self.stiffness0[i, j, k, l]
-                )
-            )
-            * (self.swelling.prime() * Identity(2)[k, l])
-            * (self.swelling.prime() * Identity(2)[i, j])
-        )
-
-    def primeU(self, u, u_prev, pf):
-        i, j, k, l = indices(4)
-        return (
-            self.interpolator.prime(pf)*(
-                self.stiffness1[i, j, k, l] - self.stiffness0[i, j, k, l]
-            )
-        ) * (sym(grad(u_prev))[k, l] - self.swelling(pf) * Identity(2)[k, l]) * (
-            sym(grad(u - u_prev))[i, j]
-        ) - (
-            self.stiffness0[i, j, k, l]
-            + self.interpolator(pf)*(
-                self.stiffness1[i, j, k, l] - self.stiffness0[i, j, k, l]
-            )
-        ) * (
-            self.swelling.prime() * Identity(2)[k, l]
-        ) * (
-            sym(grad(u - u_prev))[i, j]
-        )
-
-    def dpfdeps(self, pf_prev, u_prev, v):
-        i, j, k, l = indices(4)
-        return (
-            self.interpolator.prime(pf_prev)*(
-                self.stiffness1[i, j, k, l] - self.stiffness0[i, j, k, l]
-            )
-        ) * (sym(grad(u_prev))[k, l] - self.swelling(pf_prev) * Identity(2)[k, l]) * (
-            sym(grad(v))[i, j]
-        ) - (
-            self.stiffness0[i, j, k, l]
-            + self.interpolator(pf_prev)*(
-                self.stiffness1[i, j, k, l] - self.stiffness0[i, j, k, l]
-            )
-        ) * (
-            self.swelling.prime() * Identity(2)[k, l]
-        ) * (
-            sym(grad(v))[i, j]
+            * epsu[k, l]
+            * epsv[i, j]
         )

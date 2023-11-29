@@ -1,5 +1,7 @@
 import dolfin as df
 
+"Class for printing manufactured solution for the quasi-static Biot problem. Also not up to current standard. Might be removed. Not priority."
+
 
 class RHSManufacturedBiot:
     def __init__(self, alpha, M, kappa, lame_mu, lame_lambda, p_ref, t0=0):
