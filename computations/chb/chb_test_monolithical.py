@@ -187,7 +187,6 @@ F_mu = (
     )
     * eta_mu
     * dx
-    + gamma*ell*(gradpf0 * eta_mu * ds(0) + gradpf1 * eta_mu * ds(1) + gradpf2 * eta_mu * ds(2) + gradpf3 * eta_mu * ds(3))
 )
 F_e = (
     energy_e.du(pf_prev, u, eta_u) * dx
