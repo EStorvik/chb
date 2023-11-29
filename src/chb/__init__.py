@@ -5,6 +5,7 @@ from chb.interpolate.unboundedinterpolation import *
 # from chb.biot.manufactured_solution.rhs_biot_manufactured import *
 from chb.biot.nonlinear_coupling import *
 
+from chb.elasticity.swelling import *
 from chb.elasticity.anisotropic_stiffnesstensor import *
 from chb.elasticity.heterogeneous_stiffnesstensor import *
 

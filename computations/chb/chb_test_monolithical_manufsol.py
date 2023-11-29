@@ -14,44 +14,59 @@ interpolator = chb.StandardInterpolator()
 # Define material parameters
 
 # CH
-gamma = 5
-ell = 2.0e-2
+gamma = 1.0
+ell = 1.0e-2
 mobility = 1
 doublewell = chb.DoubleWellPotential()
 
 # Elasticity
-swelling_parameter = 0.25
-swelling = chb.Swelling(swelling_parameter)
-stiffness = chb.HeterogeneousStiffnessTensor(interpolator=interpolator, swelling = swelling)
-
+stiffness = chb.HeterogeneousStiffnessTensor(interpolator=chb.UnboundedInterpolator())
+swelling = 0.3
 
 # Flow
 compressibility0 = 1
-compressibility1 = 1
+compressibility1 = 0.5
 M = chb.NonlinearCompressibility(
-    compressibility0, compressibility1, interpolator=interpolator
+    compressibility0, compressibility1, interpolator=chb.UnboundedInterpolator()
 )
 
 permeability0 = 1
-permeability1 = 1
-k = chb.NonlinearPermeability(permeability0, permeability1, interpolator=interpolator)
+permeability1 = 0.5
+k = chb.NonlinearPermeability(
+    permeability0, permeability1, interpolator=chb.UnboundedInterpolator()
+)
 
 # Coupling
-alpha0 = 0
-alpha1 = 0
-alpha = chb.NonlinearBiotCoupling(alpha0, alpha1, interpolator=interpolator)
+alpha0 = 1
+alpha1 = 0.5
+alpha = chb.NonlinearBiotCoupling(
+    alpha0, alpha1, interpolator=chb.UnboundedInterpolator()
+)
 
 # Energies
 energy_h = chb.CHBHydraulicEnergy(M, alpha)
-energy_e = chb.CHBElasticEnergy(stiffness)
+energy_e = chb.CHBElasticEnergy(stiffness, swelling)
+
+# Manufactured Solution
+manufsol = chb.CHBManufacturedSolution(
+    doublewell=doublewell,
+    mobility=mobility,
+    gamma=gamma,
+    ell=ell,
+    M=M,
+    alpha=alpha,
+    kappa=k,
+    stiffness=stiffness,
+    swelling=swelling,
+)
 
 # Time discretization
-dt = 1.0e-5
-num_time_steps = 1000
+dt = 0.0001
+num_time_steps = 10
 T = dt * num_time_steps
 
 # Nonlinear iteration parameters
-max_iter = 50
+max_iter = 20
 tol = 1e-6
 
 # Spatial discretization
@@ -102,29 +117,103 @@ bc_e = df.DirichletBC(V.sub(2), zero_e, boundary)
 zero_f = df.Constant(0.0)
 bc_f = df.DirichletBC(V.sub(4), zero_f, boundary)
 
+# CH
+gradmu0 = df.Expression(manufsol.gradmu0_out(), degree=4, t=0.0)
+gradmu1 = df.Expression(manufsol.gradmu1_out(), degree=4, t=0.0)
+gradmu2 = df.Expression(manufsol.gradmu2_out(), degree=4, t=0.0)
+gradmu3 = df.Expression(manufsol.gradmu3_out(), degree=4, t=0.0)
+
+gradpf0 = df.Expression(manufsol.gradpf0_out(), degree=4, t=0.0)
+gradpf1 = df.Expression(manufsol.gradpf1_out(), degree=4, t=0.0)
+gradpf2 = df.Expression(manufsol.gradpf2_out(), degree=4, t=0.0)
+gradpf3 = df.Expression(manufsol.gradpf3_out(), degree=4, t=0.0)
+
+# Setup for Neumann data
+boundary_markers = df.MeshFunction("size_t", mesh, mesh.topology().dim() - 1, 0)
+
+
+class BoundaryX0(df.SubDomain):
+    tol = 1e-14
+
+    def inside(self, x, on_boundary):
+        return on_boundary and df.near(x[0], 0, tol)
+
+
+bx0 = BoundaryX0()
+bx0.mark(boundary_markers, 0)
+
+
+class BoundaryX1(df.SubDomain):
+    tol = 1e-14
+
+    def inside(self, x, on_boundary):
+        return on_boundary and df.near(x[0], 1, tol)
+
+
+bx1 = BoundaryX1()
+bx1.mark(boundary_markers, 1)
+
+
+class BoundaryY0(df.SubDomain):
+    tol = 1e-14
+
+    def inside(self, x, on_boundary):
+        return on_boundary and df.near(x[1], 0, tol)
+
+
+by0 = BoundaryY0()
+by0.mark(boundary_markers, 2)
+
+
+class BoundaryY1(df.SubDomain):
+    tol = 1e-14
+
+    def inside(self, x, on_boundary):
+        return on_boundary and df.near(x[1], 1, tol)
+
+
+by1 = BoundaryY1()
+by1.mark(boundary_markers, 3)
+
+ds = df.Measure("ds", domain=mesh, subdomain_data=boundary_markers)
+
 
 # Initial condtions
-initialconditions = chb.HalfnhalfInitialConditions(variables = 7)
-xi_n.interpolate(initialconditions)
+# CH
+# initialconditions = chb.RandomInitialConditions()
+# ic = df.Constant()
+# xi_n = interpolate(
 
+# # Elasticity
+# u_n.interpolate(zero_e)
+
+# # Flow
+# p_n.interpolate(zero_f)
 
 # RHS
-R = df.Constant(0.0)
-f = df.Constant((0.0, 0.0))
-S_f = df.Constant(0.0)
+R = df.Expression(manufsol.R_out(), degree=4, t=0.0)
+f = df.Expression((manufsol.f0_out(), manufsol.f1_out()), degree=4, t=0.0)
+S_f = df.Expression(manufsol.S_f_out(), degree=4, t=0.0)
 
 # Linear variational forms
 F_pf = (
     (pf - pf_old) * eta_pf * dx
     + dt * mobility * dot(grad(mu), grad(eta_pf)) * dx
     - dt * R * eta_pf * dx
+    - dt
+    * (
+        gradmu0 * eta_pf * ds(0)
+        + gradmu1 * eta_pf * ds(1)
+        + gradmu2 * eta_pf * ds(2)
+        + gradmu3 * eta_pf * ds(3)
+    )
 )
 F_mu = (
     mu * eta_mu * dx
     - gamma * ell * dot(grad(pf), grad(eta_mu)) * dx
     - gamma
     / ell
-    * (doublewell.cprime(pf_prev) + doublewell.cdoubleprime(pf_prev) * (pf - pf_prev) - doublewell.eprime(pf_old))
+    * (doublewell.prime(pf_prev) + doublewell.doubleprime(pf_prev) * (pf - pf_prev))
     * eta_mu
     * dx
     - (energy_e.dpf(pf_prev, u_prev) + energy_e.dpf_prime(pf, u, pf_prev, u_prev))
@@ -136,6 +225,14 @@ F_mu = (
     )
     * eta_mu
     * dx
+    + gamma
+    * ell
+    * (
+        gradpf0 * eta_mu * ds(0)
+        + gradpf1 * eta_mu * ds(1)
+        + gradpf2 * eta_mu * ds(2)
+        + gradpf3 * eta_mu * ds(3)
+    )
 )
 F_e = (
     energy_e.du(pf_prev, u, eta_u) * dx
@@ -166,19 +263,13 @@ F = F_pf + F_mu + F_e + F_p + F_q
 A, L = df.lhs(F), df.rhs(F)
 
 # Output
-pf_out, mu_out, u_out, _, p_out = xi_n.split()
-path = "/home/erlend/src/fenics/output/chb/halfnhalf/monolithic/"
+pf_out, _, u_out, _, p_out = xi_n.split()
+path = "/home/erlend/src/fenics/output/chb/manufsol/monolithic/"
 output_file_pf = df.File(
     path + "phasefield.pvd",
     "compressed",
 )
 output_file_pf << pf_out
-
-output_file_mu = df.File(
-    path + "mu.pvd",
-    "compressed",
-)
-output_file_mu << mu_out
 
 output_file_p = df.File(
     path + "pressure.pvd",
@@ -203,30 +294,23 @@ for i in range(num_time_steps):
     S_f.t = t
     f.t = t
     R.t = t
+    gradmu0.t = t
+    gradmu1.t = t
+    gradmu2.t = t
+    gradmu3.t = t
 
     for j in range(max_iter):
         xi_prev.assign(xi_n)
 
         df.solve(A == L, xi_n, bcs=[bc_f, bc_e])
         print(
-            f"Norm at time step {i} iteration {j}: {sqrt(df.assemble((pf_n - pf_prev)**2*dx+ (p_n - p_prev)**2*dx + (u_n - u_prev)**2*dx))}"
+            f"Norm at time step {i} iteration {j}: {sqrt(df.assemble((pf_n - pf_prev)**2*dx))}"
         )
-        if (
-            sqrt(
-                df.assemble(
-                    (pf_n - pf_prev) ** 2 * dx
-                    + (p_n - p_prev) ** 2 * dx
-                    + (u_n - u_prev) ** 2 * dx
-                )
-            )
-            < tol
-        ):
+        if sqrt(df.assemble((pf_n - pf_prev) ** 2 * dx)) < tol:
             break
 
     # Output
-    pf_out, mu_out, u_out, _, p_out = xi_n.split()
+    pf_out, _, u_out, _, p_out = xi_n.split()
     output_file_pf << pf_out
-    output_file_mu << mu_out
     output_file_p << p_out
     output_file_u << u_out
-
