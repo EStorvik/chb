@@ -1,7 +1,7 @@
 from math import sqrt
 
 import dolfin as df
-from dolfin import div, dot, grad, inner, sym
+from dolfin import div, dot, grad
 from ufl_legacy import Measure
 
 import chb
@@ -139,7 +139,9 @@ F_mu = (
     * dx
     - (
         energy_h.dpf(pf_prev, u_prev, p_prev)
-        + energy_h.dpf_prime(pf, u, p, pf_prev, u_prev, p_prev)
+        + energy_h.dpf_dpf(pf_prev, u_prev, p_prev)*(pf - pf_prev)
+        + energy_h.dpf_du(pf_prev, p_prev, u - u_prev)
+        + energy_h.dpf_dp(pf_prev, u_prev, p_prev)*(p - p_prev)
     )
     * eta_mu
     * dx
@@ -160,7 +162,7 @@ F_p = (
     * eta_p
     * dx
     - (p_old / M(pf_old) + alpha(pf_old) * div(u_old)) * eta_p * dx
-    + dt * k(pf_prev) * div(q) * eta_p * dx
+    + dt * div(q) * eta_p * dx
     - dt * S_f * eta_p * dx
 )
 F_q = (

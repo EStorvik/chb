@@ -13,44 +13,24 @@ class CHBHydraulicEnergy:
         return self.M.prime(pf) * p**2 / (self.M(pf) ** 2) - p * self.alpha.prime(
             pf
         ) * div(u)
-
-    def dpf_prime(self, pf, u, p, pf_prev, u_prev, p_prev):
+    
+    def dpf_dpf(self, pf, u, p):
         return (
-            (
                 (
-                    self.M.doubleprime(pf_prev) * p_prev**2
-                    - 2 * self.M.prime(pf_prev) ** 2 * p_prev**2 * self.M(pf_prev)
+                    self.M.doubleprime(pf) * p**2
+                    - 2 * self.M.prime(pf) ** 2 * p**2 * self.M(pf)
                 )
-                / (self.M(pf_prev) ** 4)
-                - p_prev * self.alpha.doubleprime(pf_prev) * div(u_prev)
+                / (self.M(pf) ** 4)
+                - p * self.alpha.doubleprime(pf) * div(u)
             )
-            * (pf - pf_prev)
-            + (
-                2 * p_prev * self.M.prime(pf_prev) / (self.M(pf_prev) ** 2)
-                - self.alpha.prime(pf_prev) * div(u_prev)
-            )
-            * (p - p_prev)
-            + p_prev * self.alpha.prime(pf_prev) * (div(u) - div(u_prev))
-        )
 
-    def dpfdpf(self, pf, pf_prev, u_prev, p_prev):
+    def dpf_dp(self, pf, u, p):
         return (
-            (
-                self.M.doubleprime(pf_prev) * p_prev**2
-                - 2 * self.M.prime(pf_prev) ** 2 * p_prev**2 * self.M(pf_prev)
+                2 * p * self.M.prime(pf) / (self.M(pf) ** 2)
+                - self.alpha.prime(pf) * div(u)
             )
-            / (self.M(pf_prev) ** 4)
-            - p_prev * self.alpha.doubleprime(pf_prev) * div(u_prev)
-        ) * (pf - pf_prev)
 
-    def dudpf(self, u, pf_prev, u_prev, p_prev):
-        return p_prev * self.alpha.prime(pf_prev) * (div(u) - div(u_prev))
+    def dpf_du(self, pf, p, du):
+        return  - p * self.alpha.prime(pf) * div(du)
 
-    def dpdpf(self, p, pf_prev, u_prev, p_prev):
-        return (
-            2 * p_prev * self.M.prime(pf_prev) / (self.M(pf_prev) ** 2)
-            - self.alpha.prime(pf_prev) * div(u_prev)
-        ) * (p - p_prev)
 
-    def du(self, pf, p):
-        return -self.alpha(pf) * p
