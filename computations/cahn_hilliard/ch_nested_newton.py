@@ -120,14 +120,14 @@ for i in range(num_time_steps):
     xi_n.interpolate(ig)
     # Update current time
     t += dt
-    
+
     ik = 0
 
     for j in range(max_iter):
         xi_prev_outer.assign(xi_n)
 
         for k in range(max_iter):
-            ik+=1
+            ik += 1
             xi_prev_inner.assign(xi_n)
 
             # Solve

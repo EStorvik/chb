@@ -116,6 +116,7 @@ q_prev, p_prev = df.split(fl_prev)
 fl_old = df.Function(V_f)
 q_old, p_old = df.split(fl_old)
 
+
 # Boundary conditions
 def boundary(x, on_boundary):
     return on_boundary
@@ -158,39 +159,30 @@ F_mu = (
     )
     * eta_mu
     * dx
-    - (
-        energy_e.dpf(pf_prev, u_n)
-        + energy_e.dpf_dpf(pf_prev, u_n) * (pf - pf_prev)
-    )
+    - (energy_e.dpf(pf_prev, u_n) + energy_e.dpf_dpf(pf_prev, u_n) * (pf - pf_prev))
     * eta_mu
     * dx
     - (
         energy_h.dpf(pf_prev, u_n, p_n)
-        + energy_h.dpf_dpf(pf_prev, u_n, p_n)*(pf - pf_prev)
+        + energy_h.dpf_dpf(pf_prev, u_n, p_n) * (pf - pf_prev)
     )
     * eta_mu
     * dx
 )
 F_e = (
     energy_e.deps(pf_n, u, eta_u) * dx
-    - (alpha(pf_n) * p_n)
-    * div(eta_u)
-    * dx
+    - (alpha(pf_n) * p_n) * div(eta_u) * dx
     - dot(f, eta_u) * dx
 )
 F_p = (
-    (p / M(pf_n)+ alpha(pf_n) * div(u_n))
-    * eta_p
-    * dx
+    (p / M(pf_n) + alpha(pf_n) * div(u_n)) * eta_p * dx
     - (p_old / M(pf_old) + alpha(pf_old) * div(u_old)) * eta_p * dx
     + dt * div(q) * eta_p * dx
     - dt * S_f * eta_p * dx
 )
-F_q = (
-    dot(q, eta_q) / k(pf_n) * dx - p * div(eta_q) * dx
-)
+F_q = dot(q, eta_q) / k(pf_n) * dx - p * div(eta_q) * dx
 
-F_ch = F_pf + F_mu 
+F_ch = F_pf + F_mu
 F_fl = F_p + F_q
 A_ch, L_ch = df.lhs(F_ch), df.rhs(F_ch)
 A_e, L_e = df.lhs(F_e), df.rhs(F_e)
@@ -250,7 +242,7 @@ for i in range(num_time_steps):
             print(
                 f"Increment norm at time step {i} iteration {j} inner iteration {k}: {increment_pf}"
             )
-            if (increment_pf < tol):
+            if increment_pf < tol:
                 break
 
         # Solve elasticity
@@ -267,9 +259,7 @@ for i in range(num_time_steps):
             )
         )
 
-        print(
-            f"Norm at time step {i} iteration {j}: {increment_total}"
-        )
+        print(f"Norm at time step {i} iteration {j}: {increment_total}")
         if increment_total < tol:
             break
 

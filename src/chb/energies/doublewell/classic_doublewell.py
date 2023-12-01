@@ -1,10 +1,11 @@
-
 """Classic double well potential."""
 
 import dolfin as df
 
+
 class DoubleWellPotential:
     """Classic double well potential. Psi = pf^2 (1 - pf)^2."""
+
     def __init__(self, scaling: float = 1.0) -> None:
         """Initialize the double well potential.
 
@@ -32,7 +33,7 @@ class DoubleWellPotential:
 
         Args:
             pf (df.Function): Phasefield
-        
+
         Returns:
             df.Function: Derivative of the double well potential
         """
@@ -40,10 +41,10 @@ class DoubleWellPotential:
 
     def doubleprime(self, pf: df.Function) -> df.Function:
         """Evaluate the second derivative of the double well potential.
-        
+
         Args:
             pf (df.Function): Phasefield
-            
+
         Returns:
             df.Function: Second derivative of the double well potential
         """
@@ -62,10 +63,10 @@ class DoubleWellPotential:
 
     def cprime(self, pf: df.Function) -> df.Function:
         """Evaluate the derivative of the convex part of the double well potential. Psi_c' = 4(pf- 0.5)^3.
-        
+
         Args:
             pf (df.Function): Phasefield
-            
+
         Returns:
             df.Function: Derivative of the convex part of the double well potential
         """
@@ -73,10 +74,10 @@ class DoubleWellPotential:
 
     def cdoubleprime(self, pf: df.Function) -> df.Function:
         """Evaluate the second derivative of the convex part of the double well potential. Psi_c'' = 12(pf- 0.5)^2.
-        
+
         Args:
             pf (df.Function): Phasefield
-            
+
         Returns:
             df.Function: Second derivative of the convex part of the double well potential
         """
@@ -84,10 +85,10 @@ class DoubleWellPotential:
 
     def e(self, pf: df.Function) -> df.Function:
         """Evaluate the expansive part of the double well potential. Psi_e = 0.5(pf- 0.5)^2.
-        
+
         Args:
             pf (df.Function): Phasefield
-            
+
         Returns:
             df.Function: Expansive part of the double well potential
         """
@@ -95,10 +96,10 @@ class DoubleWellPotential:
 
     def eprime(self, pf: df.Function) -> df.Function:
         """Evaluate the derivative of the expansive part of the double well potential. Psi_e' = (pf- 0.5).
-        
+
         Args:
             pf (df.Function): Phasefield
-            
+
         Returns:
             df.Function: Derivative of the expansive part of the double well potential
         """
@@ -106,10 +107,10 @@ class DoubleWellPotential:
 
     def edoubleprime(self, pf: df.Function) -> df.Function:
         """Evaluate the second derivative of the expansive part of the double well potential. Psi_e'' = 1.
-        
+
         Args:
             pf (df.Function): Phasefield
-        
+
         Returns:
             df.Function: Second derivative of the expansive part of the double well potential
         """

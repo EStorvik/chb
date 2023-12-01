@@ -13,24 +13,17 @@ class CHBHydraulicEnergy:
         return self.M.prime(pf) * p**2 / (self.M(pf) ** 2) - p * self.alpha.prime(
             pf
         ) * div(u)
-    
+
     def dpf_dpf(self, pf, u, p):
         return (
-                (
-                    self.M.doubleprime(pf) * p**2
-                    - 2 * self.M.prime(pf) ** 2 * p**2 * self.M(pf)
-                )
-                / (self.M(pf) ** 4)
-                - p * self.alpha.doubleprime(pf) * div(u)
-            )
+            self.M.doubleprime(pf) * p**2
+            - 2 * self.M.prime(pf) ** 2 * p**2 * self.M(pf)
+        ) / (self.M(pf) ** 4) - p * self.alpha.doubleprime(pf) * div(u)
 
     def dpf_dp(self, pf, u, p):
-        return (
-                2 * p * self.M.prime(pf) / (self.M(pf) ** 2)
-                - self.alpha.prime(pf) * div(u)
-            )
+        return 2 * p * self.M.prime(pf) / (self.M(pf) ** 2) - self.alpha.prime(
+            pf
+        ) * div(u)
 
     def dpf_du(self, pf, p, du):
-        return  - p * self.alpha.prime(pf) * div(du)
-
-
+        return -p * self.alpha.prime(pf) * div(du)

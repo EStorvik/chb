@@ -139,9 +139,9 @@ F_mu = (
     * dx
     - (
         energy_h.dpf(pf_prev, u_prev, p_prev)
-        + energy_h.dpf_dpf(pf_prev, u_prev, p_prev)*(pf - pf_prev)
+        + energy_h.dpf_dpf(pf_prev, u_prev, p_prev) * (pf - pf_prev)
         + energy_h.dpf_du(pf_prev, p_prev, u - u_prev)
-        + energy_h.dpf_dp(pf_prev, u_prev, p_prev)*(p - p_prev)
+        + energy_h.dpf_dp(pf_prev, u_prev, p_prev) * (p - p_prev)
     )
     * eta_mu
     * dx

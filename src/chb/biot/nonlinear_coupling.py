@@ -3,21 +3,23 @@ import dolfin as df
 
 """Non-linear Biot-Coupling coefficient"""
 
+
 class NonlinearBiotCoupling:
     """Non-linear Biot-Coupling coefficient"""
+
     def __init__(
         self,
         alpha0: float,
         alpha1: float,
         interpolator: chb.StandardInterpolator = chb.StandardInterpolator(),
-    )-> None:
+    ) -> None:
         """Initialize the non-linear Biot-Coupling coefficient:
-        
+
         Args:
             alpha0 (float): Coupling coefficient for phasefield = 0
             alpha1 (float): Coupling coefficient for phasefield = 1
             interpolator (chb.StandardInterpolator, optional): Interpolator for the phasefield. Defaults to chb.StandardInterpolator().
-        
+
         Attributes:
             alpha0 (float): Coupling coefficient for phasefield = 0
             alpha1 (float): Coupling coefficient for phasefield = 1

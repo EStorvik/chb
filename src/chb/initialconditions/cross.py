@@ -1,4 +1,3 @@
-
 from dolfin import UserExpression
 
 

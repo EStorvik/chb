@@ -1,8 +1,11 @@
 import dolfin as df
 
 """Swelling term"""
+
+
 class Swelling:
     """Swelling term"""
+
     def __init__(
         self,
         swelling_parameter: float,

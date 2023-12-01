@@ -9,8 +9,10 @@ import chb
 
 """Heterogeneous and anisotropic general stiffness tensor."""
 
+
 class HeterogeneousStiffnessTensor:
     """Heterogeneous and anisotropic general stiffness tensor."""
+
     def __init__(
         self,
         stiffness0: Optional[np.ndarray] = None,
@@ -90,10 +92,9 @@ class HeterogeneousStiffnessTensor:
             self.stiffness0np[1, 0, 0, 1] = stiffness0[2, 2]
 
             self.stiffness0 = df.Constant(self.stiffness0np)
-        
+
         else:
             self.stiffness0 = df.Constant(stiffness0)
-
 
         if stiffness1 is None:
             self.stiffness1np = np.zeros((dim, dim, dim, dim))
@@ -142,7 +143,7 @@ class HeterogeneousStiffnessTensor:
             self.stiffness1np[1, 0, 1, 1] = stiffness1[2, 1]
             self.stiffness1np[1, 0, 1, 0] = stiffness1[2, 2]
             self.stiffness1np[1, 0, 0, 1] = stiffness1[2, 2]
-            
+
             self.stiffness1 = df.Constant(self.stiffness1np)
 
         else:
@@ -150,10 +151,10 @@ class HeterogeneousStiffnessTensor:
 
     def manual(self, pf):
         """Evaluate the heterogeneous and anisotropic general stiffness tensor. For use in Sympy.
-        
+
         Args:
             pf (sympy.Symbol): Phasefield
-            
+
         Returns:
             sympy.Symbol: Heterogeneous and anisotropic general stiffness tensor
         """
@@ -163,23 +164,25 @@ class HeterogeneousStiffnessTensor:
 
     def manual_prime(self, pf):
         """Evaluate the derivative of the heterogeneous and anisotropic general stiffness tensor. For use in Sympy.
-        
+
         Args:
             pf (sympy.Symbol): Phasefield
-            
+
         Returns:
             sympy.Symbol: Derivative of the heterogeneous and anisotropic general stiffness tensor
         """
         return self.interpolator.prime(pf) * (self.stiffness1np - self.stiffness0np)
 
-    def __call__(self, epsu: df.Function, epsv: df.Function, pf: df.Function) -> df.Function:
+    def __call__(
+        self, epsu: df.Function, epsv: df.Function, pf: df.Function
+    ) -> df.Function:
         """Evaluate the heterogeneous and anisotropic general stiffness tensor.
-        
+
         Args:
             epsu (df.Function): Displacement
             epsv (df.Function): Testfunction for displacement
             pf (df.Function): Phasefield
-            
+
         Returns:
             df.Function: Heterogeneous and anisotropic general stiffness tensor
         """
@@ -194,14 +197,16 @@ class HeterogeneousStiffnessTensor:
             * epsv[i, j]
         )
 
-    def prime(self, epsu: df.Function, epsv: df.Function, pf: df.Function) -> df.Function:
+    def prime(
+        self, epsu: df.Function, epsv: df.Function, pf: df.Function
+    ) -> df.Function:
         """Evaluate the derivative of the heterogeneous and anisotropic general stiffness tensor.
-        
+
         Args:
             epsu (df.Function): Displacement
             epsv (df.Function): Testfunction for displacement
             pf (df.Function): Phasefield
-            
+
         Returns:
             df.Function: Derivative of the heterogeneous and anisotropic general stiffness tensor
         """
@@ -215,7 +220,9 @@ class HeterogeneousStiffnessTensor:
             * epsv[i, j]
         )
 
-    def doubleprime(self, epsu: df.Function, epsv: df.Function, pf: df.Function) -> df.Function:
+    def doubleprime(
+        self, epsu: df.Function, epsv: df.Function, pf: df.Function
+    ) -> df.Function:
         """Evaluate the second derivative of the heterogeneous and anisotropic general stiffness tensor.
 
         Args:
