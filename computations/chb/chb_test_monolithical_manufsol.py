@@ -1,6 +1,6 @@
 import dolfin as df
 
-from dolfin import grad, inner, sym, dot, div
+from dolfin import grad, dot, div
 from math import sqrt
 
 from ufl_legacy import Measure
