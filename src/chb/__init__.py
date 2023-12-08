@@ -18,3 +18,4 @@ from chb.flow.nonlinear_permeability import *
 from chb.initialconditions.cross import *
 from chb.initialconditions.halfnhalv import *
 from chb.initialconditions.random import *
+from chb.initialconditions.initialconditions import *
