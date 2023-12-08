@@ -201,6 +201,7 @@ def chb_monolithic(
         tpre = time.time()
         iteration_count = 0
         for j in range(max_iter):
+            iteration_count+=1
             xi_prev.assign(xi_n)
 
             df.solve(A == L, xi_n, bcs=[bc_f, bc_e])
@@ -224,8 +225,8 @@ def chb_monolithic(
         total_iteration_count += iteration_count
         if log is not None:
             # Write log files
-            iter_file.write(f"({i}, {iteration_count})\n")
-            time_file.write(f"({i}, {tpost})\n")
+            iter_file.write(f"{i}, {iteration_count}\n")
+            time_file.write(f"{i}, {tpost}\n")
 
         # Output
         if i % output_interval == 0:
@@ -237,7 +238,11 @@ def chb_monolithic(
 
     tfin = time.time() - t0
     if log is not None:
-        time_file.write(f"Total time spent: {tfin}")
-        iter_file.write(f"Total number of iterations: {total_iteration_count}")
         time_file.close()
         iter_file.close()
+        total_time_file = open(output_path + log + "_total_time.txt", "w")
+        total_iter_file = open(output_path + log + "_total_iter.txt", "w")
+        total_time_file.write(f"Total time spent: {tfin}")
+        total_iter_file.write(f"Total number of iterations: {total_iteration_count}")
+        total_time_file.close()
+        total_iter_file.close()

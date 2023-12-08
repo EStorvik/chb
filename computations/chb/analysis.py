@@ -14,14 +14,14 @@ interpolator = chb.StandardInterpolator()
 # Define material parameters
 
 # CH
-gamma = [5, 10]
+gamma = 5
 ell = 2.0e-2
 mobility = 1
 doublewell = chb.DoubleWellPotential()
 
 # Elasticity
-swelling_parameter = 0.25
-swelling = chb.Swelling(swelling_parameter)
+swelling_parameter = [0.01, 0.1, 0.25, 0.5, 0.75, 1, 10]
+swelling = [chb.Swelling(swelling_parameter[i]) for i in range(len(swelling_parameter))]
 stiffness = chb.HeterogeneousStiffnessTensor(interpolator=interpolator)
 
 
@@ -43,11 +43,11 @@ alpha = chb.NonlinearBiotCoupling(alpha0, alpha1, interpolator=interpolator)
 
 # Energies
 energy_h = chb.CHBHydraulicEnergy(M, alpha)
-energy_e = chb.CHBElasticEnergy(stiffness, swelling=swelling)
+energy_e = [chb.CHBElasticEnergy(stiffness, swelling=swelling[i]) for i in range(len(swelling_parameter))]
 
 # Time discretization
 dt = 1.0e-5
-num_time_steps = 200
+num_time_steps = 300
 T = dt * num_time_steps
 
 # Nonlinear iteration parameters
@@ -63,12 +63,12 @@ initialConditions = chb.HalfnhalfInitialConditions(variables=2)
 output_path_monolithic = "/home/erlend/src/fenics/output/chb/halfnhalf/monolithic/"
 output_path_threeway = "/home/erlend/src/fenics/output/chb/halfnhalf/threewaysplit/"
 output_interval = 5
-log = ["log/gamma5", "log/gamma10"]
+log = ["log/swel001", "log/swel01", "log/swel025", "log/swel05", "log/swel075", "log/swel1", "log/swel10"]
 
 
-for i in range(len(gamma)):
+for i in range(len(swelling)):
     chb_monolithic(
-        gamma = gamma[i],
+        gamma = gamma,
         ell=ell,
         mobility=mobility,
         doublewell=doublewell,
@@ -76,7 +76,7 @@ for i in range(len(gamma)):
         k=k,
         alpha=alpha,
         energy_h=energy_h,
-        energy_e=energy_e,
+        energy_e=energy_e[i],
         initialconditions=chb.HalfnhalfInitialConditions(variables=7),
         dt=dt,
         num_time_steps=num_time_steps,
@@ -91,7 +91,7 @@ for i in range(len(gamma)):
     )
 
     chb_threeway_split(
-        gamma = gamma[i],
+        gamma = gamma,
         ell=ell,
         mobility=mobility,
         doublewell=doublewell,
@@ -99,14 +99,14 @@ for i in range(len(gamma)):
         k=k,
         alpha=alpha,
         energy_h=energy_h,
-        energy_e=energy_e,
+        energy_e=energy_e[i],
         initialconditions=chb.HalfnhalfInitialConditions(variables=2),
         dt=dt,
         num_time_steps=num_time_steps,
         nx=nx,
         ny=ny,
         max_iter_inner_newton=max_iter_inner_newton,
-        max_iter_split=max_iter,
+        max_iter_split=100,
         tol = tol,
         output_path=output_path_threeway,
         output_interval=output_interval,

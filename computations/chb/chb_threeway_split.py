@@ -193,6 +193,7 @@ def chb_threeway_split(
 
     t0 = time.time()
     total_iteration_count = 0
+    total_inner_iterations = 0
     for i in range(num_time_steps):
         # Set old time-step functions
         ch_old.assign(ch_n)
@@ -214,10 +215,11 @@ def chb_threeway_split(
 
             # Solve ch
             for k in range(max_iter_inner_newton):
+                total_inner_iterations += 1
                 ch_prev.assign(ch_n)
                 df.solve(A_ch == L_ch, ch_n, bcs=[])
                 increment_pf = sqrt(df.assemble((pf_n - pf_prev) ** 2 * dx))
-                if verbose:
+                if False:
                     print(
                         f"Increment norm at time step {i} iteration {j} inner iteration {k}: {increment_pf}"
                     )
@@ -246,8 +248,8 @@ def chb_threeway_split(
         total_iteration_count += iteration_count
         if log is not None:
             # Write log files
-            iter_file.write(f"({i}, {iteration_count})\n")
-            time_file.write(f"({i}, {tpost})\n")
+            iter_file.write(f"{i}, {iteration_count}\n")
+            time_file.write(f"{i}, {tpost}\n")
 
         # Output
         if i % output_interval == 0:
@@ -257,9 +259,16 @@ def chb_threeway_split(
             _, p_out = fl_n.split()
             output_file_p << p_out
             output_file_u << u_n
+
+    # Log iterations and time
     tfin = time.time() - t0
     if log is not None:
-        time_file.write(f"Total time spent: {tfin}")
-        iter_file.write(f"Total number of iterations: {total_iteration_count}")
         time_file.close()
         iter_file.close()
+        total_time_file = open(output_path + log + "_total_time.txt", "w")
+        total_iter_file = open(output_path + log + "_total_iter.txt", "w")
+        total_time_file.write(f"Total time spent: {tfin}")
+        total_iter_file.write(f"Total number of iterations: {total_iteration_count}. Total inner iterations: {total_inner_iterations}. Avg inner iterations: {total_inner_iterations/total_iteration_count}.")
+        total_time_file.close()
+        total_iter_file.close()
+       
