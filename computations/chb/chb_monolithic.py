@@ -45,21 +45,21 @@ def chb_monolithic(
     V = df.FunctionSpace(mesh, ME)
 
     # Test and trial functions
-    xi = df.TrialFunction(V)
+    zeta = df.TrialFunction(V)
     eta = df.TestFunction(V)
-    pf, mu, u, q, p = df.split(xi)
+    pf, mu, u, q, p = df.split(zeta)
     eta_pf, eta_mu, eta_u, eta_q, eta_p = df.split(eta)
 
     # Iteration functions
     # CH
-    xi_n = df.Function(V)
-    pf_n, mu_n, u_n, q_n, p_n = df.split(xi_n)
+    zeta_n = df.Function(V)
+    pf_n, mu_n, u_n, q_n, p_n = df.split(zeta_n)
 
-    xi_prev = df.Function(V)
-    pf_prev, mu_prev, u_prev, q_prev, p_prev = df.split(xi_prev)
+    zeta_prev = df.Function(V)
+    pf_prev, mu_prev, u_prev, q_prev, p_prev = df.split(zeta_prev)
 
-    xi_old = df.Function(V)
-    pf_old, mu_old, u_old, q_old, p_old = df.split(xi_old)
+    zeta_old = df.Function(V)
+    pf_old, mu_old, u_old, q_old, p_old = df.split(zeta_old)
 
     # Boundary conditions
     def boundary(x, on_boundary):
@@ -75,7 +75,7 @@ def chb_monolithic(
 
     # Initial condtions
     initialconditions = chb.HalfnhalfInitialConditions(variables=7)
-    xi_n.interpolate(initialconditions)
+    zeta_n.interpolate(initialconditions)
 
     # RHS
     R = df.Constant(0.0)
@@ -154,7 +154,7 @@ def chb_monolithic(
     A, L = df.lhs(F), df.rhs(F)
 
     # Output
-    pf_out, mu_out, u_out, _, p_out = xi_n.split()
+    pf_out, mu_out, u_out, _, p_out = zeta_n.split()
     path = output_path
     output_file_pf = df.File(
         path + "phasefield.pvd",
@@ -190,7 +190,7 @@ def chb_monolithic(
     total_iteration_count = 0
     for i in range(num_time_steps):
         # Set old time-step functions
-        xi_old.assign(xi_n)
+        zeta_old.assign(zeta_n)
 
         # Update current time
         t += dt
@@ -202,9 +202,9 @@ def chb_monolithic(
         iteration_count = 0
         for j in range(max_iter):
             iteration_count+=1
-            xi_prev.assign(xi_n)
+            zeta_prev.assign(zeta_n)
 
-            df.solve(A == L, xi_n, bcs=[bc_f, bc_e])
+            df.solve(A == L, zeta_n, bcs=[bc_f, bc_e])
             if verbose:
                 print(
                     f"Norm at time step {i} iteration {j}: {sqrt(df.assemble((pf_n - pf_prev)**2*dx+ (p_n - p_prev)**2*dx + (u_n - u_prev)**2*dx))}"
@@ -230,7 +230,7 @@ def chb_monolithic(
 
         # Output
         if i % output_interval == 0:
-            pf_out, mu_out, u_out, _, p_out = xi_n.split()
+            pf_out, mu_out, u_out, _, p_out = zeta_n.split()
             output_file_pf << pf_out
             output_file_mu << mu_out
             output_file_p << p_out
