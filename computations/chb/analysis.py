@@ -20,7 +20,7 @@ mobility = 1
 doublewell = chb.DoubleWellPotential()
 
 # Elasticity
-swelling_parameter = [0.01, 0.1, 0.25, 0.5, 0.75, 1, 10]
+swelling_parameter = [0.01, 0.1, 0.25, 0.5, 0.75, 1]
 swelling = [chb.Swelling(swelling_parameter[i]) for i in range(len(swelling_parameter))]
 stiffness = chb.HeterogeneousStiffnessTensor(interpolator=interpolator)
 
@@ -58,12 +58,10 @@ tol = 1e-6
 # Spatial discretization
 nx = ny = 64
 
-initialConditions = chb.HalfnhalfInitialConditions(variables=2)
-
-output_path_monolithic = "/home/erlend/src/fenics/output/chb/halfnhalf/monolithic/"
-output_path_threeway = "/home/erlend/src/fenics/output/chb/halfnhalf/threewaysplit/"
+output_path_monolithic = "/home/erlend/src/fenics/output/chb/cross/monolithic/"
+output_path_threeway = "/home/erlend/src/fenics/output/chb/cross/threewaysplit/"
 output_interval = 5
-log = ["log/swel001", "log/swel01", "log/swel025", "log/swel05", "log/swel075", "log/swel1", "log/swel10"]
+log = ["log/swel001", "log/swel01", "log/swel025", "log/swel05", "log/swel075", "log/swel1"]
 
 
 for i in range(len(swelling)):
@@ -77,7 +75,7 @@ for i in range(len(swelling)):
         alpha=alpha,
         energy_h=energy_h,
         energy_e=energy_e[i],
-        initialconditions=chb.HalfnhalfInitialConditions(variables=7),
+        initialconditions=chb.CrossInitialConditions(variables=7),
         dt=dt,
         num_time_steps=num_time_steps,
         nx=nx,
@@ -100,13 +98,13 @@ for i in range(len(swelling)):
         alpha=alpha,
         energy_h=energy_h,
         energy_e=energy_e[i],
-        initialconditions=chb.HalfnhalfInitialConditions(variables=2),
+        initialconditions=chb.CrossInitialConditions(variables=2),
         dt=dt,
         num_time_steps=num_time_steps,
         nx=nx,
         ny=ny,
         max_iter_inner_newton=max_iter_inner_newton,
-        max_iter_split=100,
+        max_iter_split=max_iter,
         tol = tol,
         output_path=output_path_threeway,
         output_interval=output_interval,

@@ -74,7 +74,6 @@ def chb_monolithic(
     bc_f = df.DirichletBC(V.sub(4), zero_f, boundary)
 
     # Initial condtions
-    initialconditions = chb.HalfnhalfInitialConditions(variables=7)
     zeta_n.interpolate(initialconditions)
 
     # RHS
@@ -223,6 +222,7 @@ def chb_monolithic(
 
         tpost = time.time() - tpre
         total_iteration_count += iteration_count
+
         if log is not None:
             # Write log files
             iter_file.write(f"{i}, {iteration_count}\n")
@@ -235,6 +235,9 @@ def chb_monolithic(
             output_file_mu << mu_out
             output_file_p << p_out
             output_file_u << u_out
+        
+        if i>15 and (total_iteration_count >= max_iter*(i-1)):
+            break
 
     tfin = time.time() - t0
     if log is not None:

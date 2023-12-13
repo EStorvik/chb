@@ -259,6 +259,9 @@ def chb_threeway_split(
             _, p_out = fl_n.split()
             output_file_p << p_out
             output_file_u << u_n
+        
+        if i>15 and (total_iteration_count >= max_iter_split*(i-1)):
+            break
 
     # Log iterations and time
     tfin = time.time() - t0
