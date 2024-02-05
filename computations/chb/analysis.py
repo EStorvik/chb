@@ -90,7 +90,7 @@ log = [
 
 for i in range(len(swelling)):
     chb_monolithic(
-        gamma = gamma,
+        gamma=gamma,
         ell=ell,
         mobility=mobility,
         doublewell=doublewell,
@@ -105,11 +105,11 @@ for i in range(len(swelling)):
         nx=nx,
         ny=ny,
         max_iter=max_iter,
-        tol = tol,
+        tol=tol,
         output_path=output_path_monolithic[i],
         output_interval=output_interval,
-        log = log[i],
-        verbose = True,
+        log=log[i],
+        verbose=True,
     )
 
     chb_threeway_split(
@@ -132,6 +132,6 @@ for i in range(len(swelling)):
         tol=tol,
         output_path=output_path_threeway[i],
         output_interval=output_interval,
-        log = log[i],
+        log=log[i],
         verbose=True,
     )

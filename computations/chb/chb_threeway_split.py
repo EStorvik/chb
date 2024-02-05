@@ -93,7 +93,7 @@ def chb_threeway_split(
     # Boundary conditions
     def boundary(x, on_boundary):
         return on_boundary
-    
+
     # class TopBoundary(df.SubDomain):
     #     def inside(self, x, on_boundary):
     #         return on_boundary and df.near(x[1], 1)
@@ -103,7 +103,7 @@ def chb_threeway_split(
     #         return on_boundary and df.near(x[1], 0)
 
     # boundaries = df.MeshFunction('size_t', mesh, mesh.topology().dim() - 1)
-    # boundaries.set_all(0) 
+    # boundaries.set_all(0)
 
     # boundary_top = TopBoundary()
     # boundary_top.mark(boundaries, 1)
@@ -111,11 +111,11 @@ def chb_threeway_split(
     # boundary_bottom.mark(boundaries, 2)
 
     def boundary_top(x):
-        return x[1] > 1.0-df.DOLFIN_EPS
+        return x[1] > 1.0 - df.DOLFIN_EPS
 
     def boundary_bottom(x):
         return x[1] < df.DOLFIN_EPS
-    
+
     # Elasticity
     zero_e = df.Constant((0.0, 0.0))
     bc_e = df.DirichletBC(V_e, zero_e, boundary)

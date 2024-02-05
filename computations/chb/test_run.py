@@ -62,7 +62,9 @@ tol = 1e-6
 nx = ny = 64
 
 output_interval = 5
-output_path_threeway = "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/threewaysplit/ksi025/"
+output_path_threeway = (
+    "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/threewaysplit/ksi025/"
+)
 
 
 chb_threeway_split(
