@@ -200,7 +200,7 @@ def chb_monolithic(
         tpre = time.time()
         iteration_count = 0
         for j in range(max_iter):
-            iteration_count+=1
+            iteration_count += 1
             zeta_prev.assign(zeta_n)
 
             df.solve(A == L, zeta_n, bcs=[bc_f, bc_e])
@@ -235,8 +235,8 @@ def chb_monolithic(
             output_file_mu << mu_out
             output_file_p << p_out
             output_file_u << u_out
-        
-        if i>15 and (total_iteration_count >= max_iter*(i-1)):
+
+        if i > 15 and (total_iteration_count >= max_iter * (i - 1)):
             break
 
     tfin = time.time() - t0

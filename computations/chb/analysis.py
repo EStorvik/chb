@@ -43,7 +43,10 @@ alpha = chb.NonlinearBiotCoupling(alpha0, alpha1, interpolator=interpolator)
 
 # Energies
 energy_h = chb.CHBHydraulicEnergy(M, alpha)
-energy_e = [chb.CHBElasticEnergy(stiffness, swelling=swelling[i]) for i in range(len(swelling_parameter))]
+energy_e = [
+    chb.CHBElasticEnergy(stiffness, swelling=swelling[i])
+    for i in range(len(swelling_parameter))
+]
 
 # Time discretization
 dt = 1.0e-5
@@ -58,10 +61,31 @@ tol = 1e-6
 # Spatial discretization
 nx = ny = 64
 
-output_path_monolithic = "/home/erlend/src/fenics/output/chb/cross/monolithic/"
-output_path_threeway = "/home/erlend/src/fenics/output/chb/cross/threewaysplit/"
+output_path_monolithic = [
+    "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/monolithic/ksi001/",
+    "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/monolithic/ksi01/",
+    "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/monolithic/ksi025/",
+    "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/monolithic/ksi05/",
+    "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/monolithic/ksi075/",
+    "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/monolithic/ksi1/",
+]
+output_path_threeway = [
+    "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/threewaysplit/ksi001/",
+    "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/threewaysplit/ksi01/",
+    "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/threewaysplit/ksi025/",
+    "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/threewaysplit/ksi05/",
+    "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/threewaysplit/ksi075/",
+    "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/threewaysplit/ksi1/",
+]
 output_interval = 5
-log = ["log/swel001", "log/swel01", "log/swel025", "log/swel05", "log/swel075", "log/swel1"]
+log = [
+    "log/swel001",
+    "log/swel01",
+    "log/swel025",
+    "log/swel05",
+    "log/swel075",
+    "log/swel1",
+]
 
 
 for i in range(len(swelling)):
@@ -75,21 +99,21 @@ for i in range(len(swelling)):
         alpha=alpha,
         energy_h=energy_h,
         energy_e=energy_e[i],
-        initialconditions=chb.CrossInitialConditions(variables=7),
+        initialconditions=chb.HalfnhalfInitialConditions(variables=7),
         dt=dt,
         num_time_steps=num_time_steps,
         nx=nx,
         ny=ny,
         max_iter=max_iter,
         tol = tol,
-        output_path=output_path_monolithic,
+        output_path=output_path_monolithic[i],
         output_interval=output_interval,
         log = log[i],
         verbose = True,
     )
 
     chb_threeway_split(
-        gamma = gamma,
+        gamma=gamma,
         ell=ell,
         mobility=mobility,
         doublewell=doublewell,
@@ -98,16 +122,16 @@ for i in range(len(swelling)):
         alpha=alpha,
         energy_h=energy_h,
         energy_e=energy_e[i],
-        initialconditions=chb.CrossInitialConditions(variables=2),
+        initialconditions=chb.HalfnhalfInitialConditions(variables=2),
         dt=dt,
         num_time_steps=num_time_steps,
         nx=nx,
         ny=ny,
         max_iter_inner_newton=max_iter_inner_newton,
         max_iter_split=max_iter,
-        tol = tol,
-        output_path=output_path_threeway,
+        tol=tol,
+        output_path=output_path_threeway[i],
         output_interval=output_interval,
         log = log[i],
-        verbose = True,
+        verbose=True,
     )

@@ -93,14 +93,37 @@ def chb_threeway_split(
     # Boundary conditions
     def boundary(x, on_boundary):
         return on_boundary
+    
+    # class TopBoundary(df.SubDomain):
+    #     def inside(self, x, on_boundary):
+    #         return on_boundary and df.near(x[1], 1)
 
+    # class BottomBoundary(df.SubDomain):
+    #     def inside(self, x, on_boundary):
+    #         return on_boundary and df.near(x[1], 0)
+
+    # boundaries = df.MeshFunction('size_t', mesh, mesh.topology().dim() - 1)
+    # boundaries.set_all(0) 
+
+    # boundary_top = TopBoundary()
+    # boundary_top.mark(boundaries, 1)
+    # boundary_bottom = BottomBoundary()
+    # boundary_bottom.mark(boundaries, 2)
+
+    def boundary_top(x):
+        return x[1] > 1.0-df.DOLFIN_EPS
+
+    def boundary_bottom(x):
+        return x[1] < df.DOLFIN_EPS
+    
     # Elasticity
     zero_e = df.Constant((0.0, 0.0))
     bc_e = df.DirichletBC(V_e, zero_e, boundary)
 
     # Flow
-    zero_f = df.Constant(0.0)
-    bc_f = df.DirichletBC(V_f.sub(1), zero_f, boundary)
+
+    bc_f_t = df.DirichletBC(V_f.sub(1), df.Constant(1.0), boundary_top)
+    bc_f_b = df.DirichletBC(V_f.sub(1), df.Constant(0.0), boundary_bottom)
 
     # Initial condtions
     ch_n.interpolate(initialconditions)
@@ -172,12 +195,18 @@ def chb_threeway_split(
     )
     output_file_mu << mu_out
 
-    _, p_out = fl_n.split()
+    q_out, p_out = fl_n.split()
     output_file_p = df.File(
         path + "pressure.pvd",
         "compressed",
     )
     output_file_p << p_out
+
+    output_file_q = df.File(
+        path + "flux.pvd",
+        "compressed",
+    )
+    output_file_q << q_out
 
     output_file_u = df.File(
         path + "displacement.pvd",
@@ -230,7 +259,7 @@ def chb_threeway_split(
             df.solve(A_e == L_e, u_n, bcs=[bc_e])
 
             # Solve flow
-            df.solve(A_fl == L_fl, fl_n, bcs=[bc_f])
+            df.solve(A_fl == L_fl, fl_n, bcs=[bc_f_t, bc_f_b])
 
             increment_total = sqrt(
                 df.assemble(
@@ -256,11 +285,12 @@ def chb_threeway_split(
             pf_out, mu_out = ch_n.split()
             output_file_pf << pf_out
             output_file_mu << mu_out
-            _, p_out = fl_n.split()
+            q_out, p_out = fl_n.split()
             output_file_p << p_out
+            output_file_q << q_out
             output_file_u << u_n
-        
-        if i>15 and (total_iteration_count >= max_iter_split*(i-1)):
+
+        if i > 15 and (total_iteration_count >= max_iter_split * (i - 1)):
             break
 
     # Log iterations and time
@@ -271,7 +301,8 @@ def chb_threeway_split(
         total_time_file = open(output_path + log + "_total_time.txt", "w")
         total_iter_file = open(output_path + log + "_total_iter.txt", "w")
         total_time_file.write(f"Total time spent: {tfin}")
-        total_iter_file.write(f"Total number of iterations: {total_iteration_count}. Total inner iterations: {total_inner_iterations}. Avg inner iterations: {total_inner_iterations/total_iteration_count}.")
+        total_iter_file.write(
+            f"Total number of iterations: {total_iteration_count}. Total inner iterations: {total_inner_iterations}. Avg inner iterations: {total_inner_iterations/total_iteration_count}."
+        )
         total_time_file.close()
         total_iter_file.close()
-       
