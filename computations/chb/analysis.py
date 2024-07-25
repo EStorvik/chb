@@ -14,14 +14,16 @@ interpolator = chb.StandardInterpolator()
 # Define material parameters
 
 # CH
-gamma = 5
+gamma = [5,10,20,40,80]
 ell = 2.0e-2
 mobility = 1
 doublewell = chb.DoubleWellPotential()
 
 # Elasticity
-swelling_parameter = [0.01, 0.1, 0.25, 0.5, 0.75, 1]
-swelling = [chb.Swelling(swelling_parameter[i]) for i in range(len(swelling_parameter))]
+swelling_parameter = 0.25
+# swelling_parameter = [0.01, 0.1, 0.25, 0.5, 0.75, 1]
+swelling = chb.Swelling(swelling_parameter)
+#swelling = [chb.Swelling(swelling_parameter[i]) for i in range(len(swelling_parameter))]
 stiffness = chb.HeterogeneousStiffnessTensor(interpolator=interpolator)
 
 
@@ -43,54 +45,61 @@ alpha = chb.NonlinearBiotCoupling(alpha0, alpha1, interpolator=interpolator)
 
 # Energies
 energy_h = chb.CHBHydraulicEnergy(M, alpha)
-energy_e = [
-    chb.CHBElasticEnergy(stiffness, swelling=swelling[i])
-    for i in range(len(swelling_parameter))
-]
+# energy_e = [
+#     chb.CHBElasticEnergy(stiffness, swelling=swelling[i])
+#     for i in range(len(swelling_parameter))
+# ]
+energy_e = chb.CHBElasticEnergy(stiffness, swelling=swelling)
 
 # Time discretization
 dt = 1.0e-5
-num_time_steps = 300
+num_time_steps = 1
 T = dt * num_time_steps
 
 # Nonlinear iteration parameters
-max_iter = 50
-max_iter_inner_newton = 50
+max_iter = 1
+max_iter_inner_newton = 1
 tol = 1e-6
 
 # Spatial discretization
 nx = ny = 64
 
+# output_path_monolithic = [
+#     "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/monolithic/ksi001/",
+#     "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/monolithic/ksi01/",
+#     "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/monolithic/ksi025/",
+#     "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/monolithic/ksi05/",
+#     "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/monolithic/ksi075/",
+#     "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/monolithic/ksi1/",
+# ]
 output_path_monolithic = [
-    "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/monolithic/ksi001/",
-    "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/monolithic/ksi01/",
-    "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/monolithic/ksi025/",
-    "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/monolithic/ksi05/",
-    "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/monolithic/ksi075/",
-    "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/monolithic/ksi1/",
+    "/home/erlend/src/fenics/output/chb/halfnhalf_new_run/monolithic/gamma5/",
+    "/home/erlend/src/fenics/output/chb/halfnhalf_new_run/monolithic/gamma10/",
+    "/home/erlend/src/fenics/output/chb/halfnhalf_new_run/monolithic/gamma20/",
+    "/home/erlend/src/fenics/output/chb/halfnhalf_new_run/monolithic/gamma40/",
+    "/home/erlend/src/fenics/output/chb/halfnhalf_new_run/monolithic/gamma80/",
 ]
-output_path_threeway = [
-    "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/threewaysplit/ksi001/",
-    "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/threewaysplit/ksi01/",
-    "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/threewaysplit/ksi025/",
-    "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/threewaysplit/ksi05/",
-    "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/threewaysplit/ksi075/",
-    "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/threewaysplit/ksi1/",
-]
+# output_path_threeway = [
+#     "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/threewaysplit/ksi001/",
+#     "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/threewaysplit/ksi01/",
+#     "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/threewaysplit/ksi025/",
+#     "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/threewaysplit/ksi05/",
+#     "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/threewaysplit/ksi075/",
+#     "/home/erlend/src/fenics/output/chb/halfnhalf_pressure_drop/threewaysplit/ksi1/",
+# ]
 output_interval = 5
 log = [
-    "log/swel001",
-    "log/swel01",
-    "log/swel025",
-    "log/swel05",
-    "log/swel075",
-    "log/swel1",
+    "log/gamma5",
+    "log/gamma10",
+    "log/gamma20",
+    "log/gamma40",
+    "log/gamma80",
 ]
 
 
-for i in range(len(swelling)):
+for i in range(len(gamma)):
     chb_monolithic(
-        gamma=gamma,
+        gamma=gamma[i],
         ell=ell,
         mobility=mobility,
         doublewell=doublewell,
@@ -98,7 +107,7 @@ for i in range(len(swelling)):
         k=k,
         alpha=alpha,
         energy_h=energy_h,
-        energy_e=energy_e[i],
+        energy_e=energy_e,
         initialconditions=chb.HalfnhalfInitialConditions(variables=7),
         dt=dt,
         num_time_steps=num_time_steps,
@@ -112,26 +121,26 @@ for i in range(len(swelling)):
         verbose=True,
     )
 
-    chb_threeway_split(
-        gamma=gamma,
-        ell=ell,
-        mobility=mobility,
-        doublewell=doublewell,
-        M=M,
-        k=k,
-        alpha=alpha,
-        energy_h=energy_h,
-        energy_e=energy_e[i],
-        initialconditions=chb.HalfnhalfInitialConditions(variables=2),
-        dt=dt,
-        num_time_steps=num_time_steps,
-        nx=nx,
-        ny=ny,
-        max_iter_inner_newton=max_iter_inner_newton,
-        max_iter_split=max_iter,
-        tol=tol,
-        output_path=output_path_threeway[i],
-        output_interval=output_interval,
-        log=log[i],
-        verbose=True,
-    )
+    # chb_threeway_split(
+    #     gamma=gamma,
+    #     ell=ell,
+    #     mobility=mobility,
+    #     doublewell=doublewell,
+    #     M=M,
+    #     k=k,
+    #     alpha=alpha,
+    #     energy_h=energy_h,
+    #     energy_e=energy_e[i],
+    #     initialconditions=chb.HalfnhalfInitialConditions(variables=2),
+    #     dt=dt,
+    #     num_time_steps=num_time_steps,
+    #     nx=nx,
+    #     ny=ny,
+    #     max_iter_inner_newton=max_iter_inner_newton,
+    #     max_iter_split=max_iter,
+    #     tol=tol,
+    #     output_path=output_path_threeway[i],
+    #     output_interval=output_interval,
+    #     log=log[i],
+    #     verbose=True,
+    # )

@@ -6,8 +6,10 @@ from ufl_legacy import Measure
 import time
 from typing import Optional
 
+import numpy as np
 import chb
 
+import scipy as sp
 
 def chb_monolithic(
     gamma: float,
@@ -202,6 +204,11 @@ def chb_monolithic(
         for j in range(max_iter):
             iteration_count += 1
             zeta_prev.assign(zeta_n)
+
+            # Compute condition number of matrix
+            A_mat = df.assemble(A)
+            print(A_mat.array())
+            print(f"Condition number of A: {sp.linalg.expm_cond(A_mat.array())}")
 
             df.solve(A == L, zeta_n, bcs=[bc_f, bc_e])
             if verbose:
