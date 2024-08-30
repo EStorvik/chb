@@ -1,4 +1,4 @@
-# import chb
+import chb
 
 import numpy as np
 
@@ -13,8 +13,10 @@ from dolfinx.io import XDMFFile
 from dolfinx.fem import functionspace, Function, assemble_scalar, form
 from dolfinx.fem.petsc import LinearProblem
 
-from ufl import Measure, TestFunction, TrialFunction, split, Constant, inner, grad, dx
+from ufl import Measure, TestFunction, TrialFunction, split, Constant, inner, grad, dx, rhs, lhs
 
+
+# Pyvista
 try:
     import pyvista as pv
     import pyvistaqt as pvqt
@@ -26,137 +28,18 @@ except ModuleNotFoundError:
     print("pyvista and pyvistaqt are required to visualise the solution")
     have_pyvista = False
 
-# doublewell
-"""Classic double well potential."""
-
-
-class DoubleWellPotential:
-    """Classic double well potential. Psi = pf^2 (1 - pf)^2."""
-
-    def __init__(self, scaling: float = 1.0) -> None:
-        """Initialize the double well potential.
-
-        Args:
-            scaling (float, optional): Scaling factor. Defaults to 1.0.
-
-        Attributes:
-            scaling (float): Scaling factor.
-        """
-        self.scaling = scaling
-
-    def __call__(self, pf: Function) -> Function:
-        """Evaluate the double well potential.
-
-        Args:
-            pf (df.Function): Phasefield
-
-        Returns:
-            df.Function: Double well potential
-        """
-        return self.scaling * pf**2 * (1 - pf) ** 2
-
-    def prime(self, pf:Function) -> Function:
-        """Evaluate the derivative of the double well potential.
-
-        Args:
-            pf (df.Function): Phasefield
-
-        Returns:
-            df.Function: Derivative of the double well potential
-        """
-        return self.scaling * 2 * pf * (1 - pf) * (1 - 2 * pf)
-
-    def doubleprime(self, pf: Function) -> Function:
-        """Evaluate the second derivative of the double well potential.
-
-        Args:
-            pf (df.Function): Phasefield
-
-        Returns:
-            df.Function: Second derivative of the double well potential
-        """
-        return self.scaling * 2 * (1 - 6 * pf + 6 * pf**2)
-
-    def c(self, pf: Function) -> Function:
-        """Evaluate the convex part of the double well potential. Psi_c = (pf- 0.5)^4+ 0.0625.
-
-        args:
-            pf (df.Function): Phasefield
-
-        returns:
-            df.Function: Convex part of the double well potential
-        """
-        return self.scaling * ((pf - 0.5) ** 4 + 0.0625)
-
-    def cprime(self, pf: Function) -> Function:
-        """Evaluate the derivative of the convex part of the double well potential. Psi_c' = 4(pf- 0.5)^3.
-
-        Args:
-            pf (df.Function): Phasefield
-
-        Returns:
-            df.Function: Derivative of the convex part of the double well potential
-        """
-        return self.scaling * 4 * (pf - 0.5) ** 3
-
-    def cdoubleprime(self, pf: Function) -> Function:
-        """Evaluate the second derivative of the convex part of the double well potential. Psi_c'' = 12(pf- 0.5)^2.
-
-        Args:
-            pf (df.Function): Phasefield
-
-        Returns:
-            df.Function: Second derivative of the convex part of the double well potential
-        """
-        return self.scaling * 12 * (pf - 0.5) ** 2
-
-    def e(self, pf: Function) -> Function:
-        """Evaluate the expansive part of the double well potential. Psi_e = 0.5(pf- 0.5)^2.
-
-        Args:
-            pf (df.Function): Phasefield
-
-        Returns:
-            df.Function: Expansive part of the double well potential
-        """
-        return self.scaling * 0.5 * (pf - 0.5) ** 2
-
-    def eprime(self, pf: Function) -> Function:
-        """Evaluate the derivative of the expansive part of the double well potential. Psi_e' = (pf- 0.5).
-
-        Args:
-            pf (df.Function): Phasefield
-
-        Returns:
-            df.Function: Derivative of the expansive part of the double well potential
-        """
-        return self.scaling * (pf - 0.5)
-
-    def edoubleprime(self, pf: Function) -> Function:
-        """Evaluate the second derivative of the expansive part of the double well potential. Psi_e'' = 1.
-
-        Args:
-            pf (df.Function): Phasefield
-
-        Returns:
-            df.Function: Second derivative of the expansive part of the double well potential
-        """
-        return self.scaling * 1.0
-
-
-
-
+have_pyvista = False
 # Define material parameters
 
 # CH
 gamma = 1.0
-ell = 2.0e-1
+ell = 1.0e-1
 mobility = 1
-doublewell = DoubleWellPotential()
+doublewell = chb.DoubleWellPotential()
 
 # Time discretization
 dt = 1.0e-3
-num_time_steps = 100
+num_time_steps = 10
 T = dt * num_time_steps
 
 # Nonlinear iteration parameters
@@ -187,45 +70,27 @@ eta_pf, eta_mu = split(eta)
 # Iteration functions
 # CH
 xi_n = Function(V)
-pf_n, mu_n = split(xi_n)
+pf_n, mu_n = xi_n.split()
 
 xi_prev = Function(V)
-pf_prev, mu_prev = split(xi_prev)
+pf_prev, mu_prev = xi_prev.split()
 
 xi_old = Function(V)
-pf_old, mu_old = split(xi_old)
+pf_old, mu_old = xi_old.split()
 
 
 # Initial condtions
-rng = np.random.default_rng(42)
-#qinitialconditions = lambda x: 0.63 + 0.02 * (0.5 - rng.random(x.shape[1]))
-def initialconditions(x):
-    values = np.zeros(x.shape[1])
-    # Set value 1 for the right half of the domain (x >= 0.5)
-    values[x[0] >= 0.5] = 1.0
-    return values
-xi_n.sub(0).interpolate(initialconditions)
+initialcondition = chb.initialconditions.halfnhalf
+xi_n.sub(0).interpolate(initialcondition)
+xi_n.x.scatter_forward()
 
+# Linear variational forms
+F_pf = inner(pf-pf_old, eta_pf) * dx + dt * mobility * inner(grad(mu), grad(eta_pf)) * dx
+F_mu = inner(mu, eta_mu) * dx - gamma * ell * inner(grad(pf),grad(eta_mu)) * dx - gamma/ell * (doublewell.prime(pf_prev) + doublewell.doubleprime(pf_prev) * (pf-pf_prev))* eta_mu * dx
+F = F_pf+F_mu
 
-# Linear variational formsç
-A_pf = (
-    inner(pf, eta_pf) * dx
-    + dt * mobility * inner(grad(mu), grad(eta_pf)) * dx
-)
-L_pf =  inner(pf_old,eta_pf)*dx
-
-A_mu = (
-    inner(mu, eta_mu) * dx
-    - gamma * ell * inner(grad(pf), grad(eta_mu)) * dx
-    - gamma
-    / ell
-    * doublewell.cdoubleprime(pf_prev) * inner(pf, eta_mu)
-    * dx
-)
-L_mu = gamma/ell*inner(doublewell.cprime(pf_prev)-doublewell.cdoubleprime(pf_prev)*pf_prev+doublewell.eprime(pf_old),eta_mu)*dx
-
-a = A_pf + A_mu
-L = L_pf + L_mu
+a = lhs(F)
+L = rhs(F)
 
 
 
@@ -233,21 +98,13 @@ L = L_pf + L_mu
 output_file_pf = XDMFFile(MPI.COMM_WORLD, "../output/ch.xdmf", "w")
 output_file_pf.write_mesh(msh)
 
-def l2increment(u,v):
-    diff = u-v
-    diff_sq = inner(diff,diff)*dx
-    int_diff = assemble_scalar(form(diff_sq))
-    return np.sqrt(int_diff)
-
-
 
 # Time stepping
 t = 0.0
 
-V0, dofs = V.sub(0).collapse()
-
 # Prepare viewer for plotting the solution during the computation
 if have_pyvista:
+    V0, dofs = V.sub(0).collapse()
     # Create a VTK 'mesh' with 'nodes' at the function dofs
     topology, cell_types, x = plot.vtk_mesh(V0)
     grid = pv.UnstructuredGrid(topology, cell_types, x)
@@ -264,22 +121,29 @@ if have_pyvista:
 for i in range(num_time_steps):
     # Set old time-step functions
     xi_old.x.array[:] = xi_n.x.array
+    xi_old.x.scatter_forward()
 
     # Update current time
     t += dt
 
     for j in range(max_iter):
         xi_prev.x.array[:] = xi_n.x.array
+        xi_prev.x.scatter_forward()
+        pf_prev,_ = xi_prev.split()
 
         # Define the problem
         problem = LinearProblem(a, L)
         xi_n = problem.solve()
-        increment = l2increment(pf_n,pf_prev)
-        print(
-            f"Norm at time step {i} iteration {j}: {increment}"
-        )
+        pf_n, _ = xi_n.split()
+        print(np.sum(xi_n.x.array[:]-xi_prev.x.array[:]))
+        xi_n.x.scatter_forward()
+        increment = chb.util.l2norm(pf_n-pf_prev)
+        # print(
+        #     f"Norm at time step {i} iteration {j}: {increment}"
+        # )
 
-          # Update the plot window
+        
+        # Update the plot window
         if have_pyvista:
             p.add_text(f"time: {t:.2e}", font_size=12, name="timelabel")
             grid.point_data["c"] = xi_n.x.array[dofs].real
