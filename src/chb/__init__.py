@@ -10,6 +10,8 @@
 
 from chb.energies.doublewell.classic_doublewell import DoubleWellPotential
 from chb import util
+
+from chb import visualization
 # from chb.energies.elastic.chb_elastic_energy import *
 # from chb.energies.hydraulic.chb_hydraulic_energy import *
 

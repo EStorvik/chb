@@ -8,7 +8,7 @@ from petsc4py import PETSc
 
 from basix.ufl import element, mixed_element
 
-from dolfinx import mesh, plot
+from dolfinx import mesh
 from dolfinx.io import XDMFFile
 from dolfinx.fem import functionspace, Function, assemble_scalar, form
 from dolfinx.fem.petsc import LinearProblem
@@ -16,24 +16,11 @@ from dolfinx.fem.petsc import LinearProblem
 from ufl import Measure, TestFunction, TrialFunction, split, Constant, inner, grad, dx, rhs, lhs
 
 
-# Pyvista
-try:
-    import pyvista as pv
-    import pyvistaqt as pvqt
-
-    have_pyvista = True
-    if pv.OFF_SCREEN:
-        pv.start_xvfb(wait=0.5)
-except ModuleNotFoundError:
-    print("pyvista and pyvistaqt are required to visualise the solution")
-    have_pyvista = False
-
-have_pyvista = False
 # Define material parameters
 
 # CH
 gamma = 1.0
-ell = 1.0e-1
+ell = 5.0e-2
 mobility = 1
 doublewell = chb.DoubleWellPotential()
 
@@ -47,9 +34,8 @@ max_iter = 20
 tol = 1e-6
 
 # Spatial discretization
-nx = ny = 32
+nx = ny =128
 msh = mesh.create_unit_square(MPI.COMM_WORLD, nx, ny, mesh.CellType.triangle)
-#dx = Measure("dx", domain=msh)
 
 
 # Finite elements
@@ -60,7 +46,6 @@ ME = mixed_element([P1, P1])
 V = functionspace(msh, ME)
 
 # Test and trial functions
-
 xi = TrialFunction(V)
 eta = TestFunction(V)
 pf, mu = split(xi)
@@ -93,6 +78,8 @@ a = lhs(F)
 L = rhs(F)
 
 
+# Pyvista plot
+viz = chb.visualization.PyvistaVizualization(V.sub(0), xi_n.sub(0), 0.0)
 
 # Output file
 output_file_pf = XDMFFile(MPI.COMM_WORLD, "../output/ch.xdmf", "w")
@@ -103,20 +90,7 @@ output_file_pf.write_mesh(msh)
 t = 0.0
 
 # Prepare viewer for plotting the solution during the computation
-if have_pyvista:
-    V0, dofs = V.sub(0).collapse()
-    # Create a VTK 'mesh' with 'nodes' at the function dofs
-    topology, cell_types, x = plot.vtk_mesh(V0)
-    grid = pv.UnstructuredGrid(topology, cell_types, x)
 
-    # Set output data
-    grid.point_data["c"] = xi_n.x.array[dofs].real
-    grid.set_active_scalars("c")
-
-    p = pvqt.BackgroundPlotter(title="concentration", auto_update=True)
-    p.add_mesh(grid, clim=[0, 1])
-    p.view_xy(True)
-    p.add_text(f"time: {t}", font_size=12, name="timelabel")
 
 for i in range(num_time_steps):
     # Set old time-step functions
@@ -129,40 +103,29 @@ for i in range(num_time_steps):
     for j in range(max_iter):
         xi_prev.x.array[:] = xi_n.x.array
         xi_prev.x.scatter_forward()
-        pf_prev,_ = xi_prev.split()
+        pf_prev,_ = xi_prev.split() # This seem only to be necessary for the computation of the L2-norm
 
         # Define the problem
         problem = LinearProblem(a, L)
         xi_n = problem.solve()
-        pf_n, _ = xi_n.split()
-        print(np.sum(xi_n.x.array[:]-xi_prev.x.array[:]))
+        pf_n, _ = xi_n.split() # This seem only to be necessary for the computation of the L2-norm
         xi_n.x.scatter_forward()
         increment = chb.util.l2norm(pf_n-pf_prev)
-        # print(
-        #     f"Norm at time step {i} iteration {j}: {increment}"
-        # )
+        print(
+            f"Norm at time step {i} iteration {j}: {increment}"
+        )
 
-        
-        # Update the plot window
-        if have_pyvista:
-            p.add_text(f"time: {t:.2e}", font_size=12, name="timelabel")
-            grid.point_data["c"] = xi_n.x.array[dofs].real
-            p.app.processEvents()
+        viz.update(xi_n.sub(0), t)
         if increment < tol:
             break
+        
+        # Update the plot window
 
     # Output
     pf_out, _ = xi_n.split()
     output_file_pf.write_function(pf_out, t)
 
 
-# Update ghost entries and plot
-if have_pyvista:
-    xi_n.x.scatter_forward()
-    grid.point_data["c"] = xi_n.x.array[dofs].real
-    screenshot = None
-    if pv.OFF_SCREEN:
-        screenshot = "c.png"
-    pv.plot(grid, show_edges=True, screenshot=screenshot)
+viz.final_plot(xi_n.sub(0))
 
 output_file_pf.close()
