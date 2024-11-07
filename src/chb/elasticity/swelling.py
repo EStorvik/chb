@@ -1,4 +1,5 @@
-import dolfin as df
+import dolfinx as dfx
+import ufl
 
 """Swelling term"""
 
@@ -24,7 +25,7 @@ class Swelling:
         self.swelling_parameter = swelling_parameter
         self.dim = dim
 
-    def __call__(self, pf: df.Function) -> df.Function:
+    def __call__(self, pf: dfx.fem.Function) -> dfx.fem.Function:
         """Evaluate the swelling term
 
         Args:
@@ -33,7 +34,7 @@ class Swelling:
         Returns:
             df.Function: Swelling term
         """
-        return 2 * self.swelling_parameter * (pf - 0.5) * df.Identity(self.dim)
+        return 2 * self.swelling_parameter * (pf - 0.5) * ufl.Identity(self.dim)
 
     def prime(self):
         """Evaluate the derivative of the swelling term
@@ -41,4 +42,4 @@ class Swelling:
         Returns:
             df.Function: Derivative of the swelling term
         """
-        return 2 * self.swelling_parameter * df.Identity(self.dim)
+        return 2 * self.swelling_parameter * ufl.Identity(self.dim)

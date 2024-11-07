@@ -1,0 +1,4 @@
+from chb.elasticity.heterogeneous_stiffness_tensor import HeterogeneousStiffnessTensor
+from chb.elasticity.isotropic_stiffness import IsotropicStiffnessTensor
+
+from chb.elasticity.swelling import Swelling
