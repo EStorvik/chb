@@ -34,7 +34,7 @@ class Swelling:
         Returns:
             df.Function: Swelling term
         """
-        return 2 * self.swelling_parameter * (pf - 0.5) * ufl.Identity(self.dim)
+        return self.swelling_parameter * (pf - 0.5) * ufl.Identity(self.dim)
 
     def prime(self):
         """Evaluate the derivative of the swelling term
@@ -42,4 +42,4 @@ class Swelling:
         Returns:
             df.Function: Derivative of the swelling term
         """
-        return 2 * self.swelling_parameter * ufl.Identity(self.dim)
+        return self.swelling_parameter * ufl.Identity(self.dim)

@@ -45,7 +45,7 @@ msh = mesh.create_unit_square(MPI.COMM_WORLD, nx, ny, mesh.CellType.triangle)
 # Define material parameters
 
 # CH
-ell = 0.05
+ell = 0.02
 gamma = 1 / ell
 mobility = ell
 doublewell = chb.DoubleWellPotential()
@@ -124,9 +124,9 @@ F_mu = (
     / ell
     * inner(
         (
-            doublewell.prime(pf_prev)
-            + doublewell.doubleprime(pf_prev) * (pf - pf_prev)
-            # - doublewell.eprime(pf_old)
+            doublewell.cprime(pf_prev)
+            + doublewell.cdoubleprime(pf_prev) * (pf - pf_prev)
+            - doublewell.eprime(pf_old)
         ),
         eta_mu,
     )
@@ -143,12 +143,12 @@ F_mu = (
             )
             - inner(
                 stiffness_tensor.stress(strain=sym(grad(u)) - swelling(pf), pf=pf_old),
-                swelling.swelling_parameter * Identity(2),
+                swelling.prime(),
             ),
             eta_mu,
         )
-        * dx
     )
+    * dx
 )
 
 F_u = (
@@ -196,7 +196,7 @@ for i in range(num_time_steps):
         # Define the problem
         problem = LinearProblem(a, L, bcs=[bc])
         xi_n = problem.solve()
-        pf_n, mu_n, u_n = (
+        pf_n, _, _ = (
             xi_n.split()
         )  # This seem only to be necessary for the computation of the L2-norm
         xi_n.x.scatter_forward()
