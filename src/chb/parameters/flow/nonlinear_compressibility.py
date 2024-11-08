@@ -6,7 +6,7 @@ class NonlinearCompressibility:
         self,
         M0: float,
         M1: float,
-        interpolator: chb.StandardInterpolator = chb.StandardInterpolator(),
+        interpolator: chb.interpolate.StandardInterpolator = chb.interpolate.StandardInterpolator(),
     ):
         self.M0 = M0
         self.M1 = M1

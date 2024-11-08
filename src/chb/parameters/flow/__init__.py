@@ -1,0 +1,2 @@
+from chb.parameters.flow.nonlinear_compressibility import NonlinearCompressibility
+from chb.parameters.flow.nonlinear_permeability import NonlinearPermeability

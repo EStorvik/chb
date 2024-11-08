@@ -1,0 +1,1 @@
+from chb.parameters.energies.doublewell.classic_doublewell import DoubleWellPotential

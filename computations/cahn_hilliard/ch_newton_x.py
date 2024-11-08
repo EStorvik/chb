@@ -37,7 +37,7 @@ print(dolfinx.__version__)
 gamma = 1.0
 ell = 5.0e-2
 mobility = 1
-doublewell = chb.DoubleWellPotential()
+doublewell = chb.energies.DoubleWellPotential()
 
 # Time discretization
 dt = 1.0e-3

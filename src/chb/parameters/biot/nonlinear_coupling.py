@@ -1,5 +1,6 @@
 import chb
-import dolfin as df
+
+from dolfinx.fem import Function
 
 """Non-linear Biot-Coupling coefficient"""
 
@@ -11,7 +12,7 @@ class NonlinearBiotCoupling:
         self,
         alpha0: float,
         alpha1: float,
-        interpolator: chb.StandardInterpolator = chb.StandardInterpolator(),
+        interpolator: chb.interpolate.StandardInterpolator = chb.interpolate.StandardInterpolator(),
     ) -> None:
         """Initialize the non-linear Biot-Coupling coefficient:
 
@@ -29,7 +30,7 @@ class NonlinearBiotCoupling:
         self.alpha1 = alpha1
         self.interpolator = interpolator
 
-    def __call__(self, phasefield: df.Function) -> df.Function:
+    def __call__(self, phasefield: Function) -> Function:
         """Evaluate the non-linear Biot-Coupling coefficient
 
         Args:
@@ -40,7 +41,7 @@ class NonlinearBiotCoupling:
         """
         return self.alpha0 + self.interpolator(phasefield) * (self.alpha1 - self.alpha0)
 
-    def prime(self, phasefield: df.Function) -> df.Function:
+    def prime(self, phasefield: Function) -> Function:
         """Evaluate the derivative of the non-linear Biot-Coupling coefficient
 
         Args:
@@ -51,7 +52,7 @@ class NonlinearBiotCoupling:
         """
         return self.interpolator.prime(phasefield) * (self.alpha1 - self.alpha0)
 
-    def doubleprime(self, phasefield: df.Function) -> df.Function:
+    def doubleprime(self, phasefield: Function) -> Function:
         """Evaluate the second derivative of the non-linear Biot-Coupling coefficient
 
         Args:

@@ -10,6 +10,7 @@ class Swelling:
     def __init__(
         self,
         swelling_parameter: float,
+        pf_ref: float = 0.5,
         dim: int = 2,
     ) -> None:
         """Initialize the swelling term
@@ -23,6 +24,7 @@ class Swelling:
             dim (int): Dimension.
         """
         self.swelling_parameter = swelling_parameter
+        self.pf_ref = pf_ref
         self.dim = dim
 
     def __call__(self, pf: dfx.fem.Function) -> dfx.fem.Function:
@@ -34,7 +36,7 @@ class Swelling:
         Returns:
             df.Function: Swelling term
         """
-        return self.swelling_parameter * (pf - 0.5) * ufl.Identity(self.dim)
+        return self.swelling_parameter * (pf - self.pf_ref) * ufl.Identity(self.dim)
 
     def prime(self):
         """Evaluate the derivative of the swelling term

@@ -6,7 +6,7 @@ class NonlinearPermeability:
         self,
         k0: float,
         k1: float,
-        interpolator: chb.StandardInterpolator = chb.StandardInterpolator(),
+        interpolator: chb.interpolate.StandardInterpolator = chb.interpolate.StandardInterpolator(),
     ):
         self.k0 = k0
         self.k1 = k1
