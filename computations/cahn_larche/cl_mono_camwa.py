@@ -8,6 +8,8 @@ from petsc4py import PETSc
 
 from basix.ufl import element, mixed_element
 
+import matplotlib.pyplot as plt
+
 from dolfinx import mesh
 from dolfinx.io import XDMFFile
 from dolfinx.fem import (
@@ -17,6 +19,7 @@ from dolfinx.fem import (
     form,
     locate_dofs_topological,
     dirichletbc,
+    Expression,
 )
 from dolfinx.fem.petsc import (
     LinearProblem,
@@ -45,26 +48,26 @@ from ufl import (
 
 
 # Spatial discretization
-nx = ny = 128
+nx = ny = 256
 msh = mesh.create_unit_square(MPI.COMM_WORLD, nx, ny, mesh.CellType.triangle)
 
 # Define material parameters
 
 # CH
-ell = 0.025/2
-gamma = 1# / ell
-mobility = 1# * ell
+ell = 0.0125
+gamma = 0.025 / ell
+mobility = 10 * ell
 doublewell = chb.energies.DoubleWellPotential()
 
 # Elasticity
 stiffness_tensor = chb.elasticity.IsotropicStiffnessTensor(
-    lame_lambda_0=20, lame_lambda_1=0.1, lame_mu_0=100, lame_mu_1=1
+    lame_lambda_0=20, lame_lambda_1=0.1, lame_mu_0=50, lame_mu_1=1
 )
 swelling = chb.elasticity.Swelling(swelling_parameter=0.25, pf_ref = 0)
 
 # Time discretization
 dt = 1.0e-3
-num_time_steps = 100
+num_time_steps = 300
 T = dt * num_time_steps
 
 # Nonlinear iteration parameters
@@ -181,7 +184,7 @@ problem = LinearProblem(a, L, bcs=[bc])
 viz = chb.visualization.PyvistaVizualization(V.sub(0), xi_n.sub(0), 0.0)
 
 # Output file
-output_file_pf = XDMFFile(MPI.COMM_WORLD, f"../output/cl_ell{ell}.xdmf", "w")
+output_file_pf = XDMFFile(MPI.COMM_WORLD, f"../output/cl_ellscaled_ell{ell}.xdmf", "w")
 output_file_pf.write_mesh(msh)
 
 
@@ -226,5 +229,7 @@ for i in range(num_time_steps):
 
 
 viz.final_plot(xi_n.sub(0))
+
+
 
 output_file_pf.close()
