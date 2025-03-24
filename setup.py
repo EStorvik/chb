@@ -11,9 +11,9 @@ with open("requirements-dev.txt") as f:
 
 setup(
     name="chb",
-    version="0.0.1",
+    version="0.0.2",
     description="Cahn-Hilliard-Biot simulation library",
-    keywords="Cahn-Hilliard flow deformation fenics solvers",
+    keywords="Cahn-Hilliard flow deformation fenicsx solvers",
     package_dir={"": "src"},
     packages=find_packages(where="src"),
     package_data={"chb": ["py.typed"]},
@@ -36,5 +36,5 @@ setup(
     maintainer="Erlend Storvik",
     maintainer_email="erlend.storvik@hvl.no",
     platforms=["Linux"],
-    license="GNU GPL v2",
+    license="GNU GPL v3",
 )
