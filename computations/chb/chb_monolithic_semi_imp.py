@@ -70,11 +70,11 @@ stiffness_tensor = chb.elasticity.IsotropicStiffnessTensor(
 swelling = chb.elasticity.Swelling(swelling_parameter=0.1, pf_ref=0.5)
 
 # Biot
-alpha = chb.biot.NonlinearBiotCoupling(alpha0=1, alpha1=1)
+alpha = chb.biot.NonlinearBiotCoupling(alpha0=1, alpha1=0.1)
 
 # Flow
 permeability = chb.flow.NonlinearPermeability(k0=1, k1=0.01)
-compressibility = chb.flow.NonlinearCompressibility(M0=1, M1=1)
+compressibility = chb.flow.NonlinearCompressibility(M0=1, M1=0.1)
 
 # Time discretization
 dt = 1.0e-3
@@ -194,16 +194,16 @@ F_mu = (
         )
     )
     * dx
-    # - (
-    #     inner(
-    #         compressibility.prime(pf_old)
-    #         * p_old**2
-    #         / (2 * compressibility(pf_old) ** 2)
-    #         - p_old * alpha.prime(pf_old) * nabla_div(u_old),
-    #         eta_mu,
-    #     )
-    #     * dx
-    # )
+    - (
+        inner(
+            compressibility.prime(pf_old)
+            * p_old**2
+            / (2 * compressibility(pf_old) ** 2)
+            - p_old * alpha.prime(pf_old) * nabla_div(u_old),
+            eta_mu,
+        )
+        * dx
+    )
 )
 
 F_u = (
