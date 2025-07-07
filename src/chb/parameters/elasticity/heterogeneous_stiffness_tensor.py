@@ -2,8 +2,7 @@ from typing import Optional
 
 import dolfinx as dfx
 import numpy as np
-from ufl import indices, Constant, as_tensor
-from petsc4py import PETSc
+from ufl import indices, as_tensor
 
 
 import chb
@@ -16,7 +15,6 @@ class HeterogeneousStiffnessTensor:
 
     def __init__(
         self,
-        domain,
         stiffness0: Optional[np.ndarray] = None,
         stiffness1: Optional[np.ndarray] = None,
         dim: int = 2,
@@ -68,10 +66,9 @@ class HeterogeneousStiffnessTensor:
             self.stiffness0np[1, 0, 1, 0] = 100
             self.stiffness0np[1, 0, 0, 1] = 100
 
-            # self.stiffness0 = Constant(domain, PETSc.ScalarType(self.stiffness0np))
-            print(self.stiffness0np.shape)
-            self.stiffness0 = self._to_ufl(self.stiffness0np)
-
+            #print(self.stiffness0np.shape)
+            self.stiffness0 = as_tensor(self.stiffness0np)
+            #print(self.stiffness0.ufl_shape)
 
         elif voigt:
             self.stiffness0np = np.zeros((dim, dim, dim, dim))
@@ -96,10 +93,10 @@ class HeterogeneousStiffnessTensor:
             self.stiffness0np[1, 0, 1, 0] = stiffness0[2, 2]
             self.stiffness0np[1, 0, 0, 1] = stiffness0[2, 2]
 
-            self.stiffness0 = Constant(domain, PETSc.ScalarType(self.stiffness0np))
+            self.stiffness0 = as_tensor(self.stiffness0np)
 
         else:
-            self.stiffness0 = Constant(domain, PETSc.ScalarType(stiffness0))
+            self.stiffness0 = as_tensor(self.stiffness0)
 
         if stiffness1 is None:
             self.stiffness1np = np.zeros((dim, dim, dim, dim))
@@ -124,8 +121,7 @@ class HeterogeneousStiffnessTensor:
             self.stiffness1np[1, 0, 1, 0] = 1
             self.stiffness1np[1, 0, 0, 1] = 1
 
-            # self.stiffness1 = Constant(domain, PETSc.ScalarType(self.stiffness1np))
-            self.stiffness1 = self._to_ufl(self.stiffness1np)
+            self.stiffness1 = as_tensor(self.stiffness1np)
 
 
         elif voigt:
@@ -151,11 +147,10 @@ class HeterogeneousStiffnessTensor:
             self.stiffness1np[1, 0, 1, 0] = stiffness1[2, 2]
             self.stiffness1np[1, 0, 0, 1] = stiffness1[2, 2]
 
-            # self.stiffness1 = Constant(domain, PETSc.ScalarType(self.stiffness1np))
-            self.stiffness1 = self._to_ufl(self.stiffness1np)
+            self.stiffness1 = as_tensor(self.stiffness1np)
 
         else:
-            self.stiffness1 = Constant(domain, PETSc.ScalarType(stiffness1))
+            self.stiffness1 = as_tensor(self.stiffness1)
 
     def manual(self, pf):
         """Evaluate the heterogeneous and anisotropic general stiffness tensor. For use in Sympy.
@@ -166,9 +161,7 @@ class HeterogeneousStiffnessTensor:
         Returns:
             sympy.Symbol: Heterogeneous and anisotropic general stiffness tensor
         """
-        return self.stiffness0np + self.interpolator(pf) * (
-            self.stiffness1np - self.stiffness0np
-        )
+        return self.stiffness0 + self.interpolator(pf) * (self.stiffness1 - self.stiffness0)
 
     def manual_prime(self, pf):
         """Evaluate the derivative of the heterogeneous and anisotropic general stiffness tensor. For use in Sympy.
@@ -179,81 +172,43 @@ class HeterogeneousStiffnessTensor:
         Returns:
             sympy.Symbol: Derivative of the heterogeneous and anisotropic general stiffness tensor
         """
-        return self.interpolator.prime(pf) * (self.stiffness1np - self.stiffness0np)
-    
-    def _to_ufl(self, C):
-        shape = C.shape
-        assert len(shape) == 4, "Tensor must be 4-dimensional"
-        i, j, k, l = indices(len(shape))
-        return as_tensor(C[i, j, k, l])
+        return self.interpolator.prime(pf) * (self.stiffness1 - self.stiffness0)
 
-    def __call__(
-        self, epsu: dfx.fem.Function, epsv: dfx.fem.Function, pf: dfx.fem.Function
-    ) -> dfx.fem.Function:
+    def stress(self, strain: dfx.fem.Function, pf: dfx.fem.Function) -> dfx.fem.Function:
         """Evaluate the heterogeneous and anisotropic general stiffness tensor.
 
         Args:
-            epsu (df.Function): Strain
-            epsv (df.Function): Testfunction for strain
+            strain (df.Function): Strain
             pf (df.Function): Phasefield
 
         Returns:
             df.Function: Heterogeneous and anisotropic general stiffness tensor
         """
         i, j, k, l = indices(4)
-        print(self.stiffness1.shape)
-        return (
-            (
-                self.stiffness0[i, j, k, l]
-                + self.interpolator(pf)
-                * (self.stiffness1[i, j, k, l] - self.stiffness0[i, j, k, l])
-            )
-            * epsu[k, l]
-            * epsv[i, j]
-        )
+        return as_tensor((self.stiffness0[i,j,k,l] + self.interpolator(pf) * (self.stiffness1[i,j,k,l] - self.stiffness0[i,j,k,l])) * strain[k,l], (i,j))
 
-    def prime(
-        self, epsu: dfx.fem.Function, epsv: dfx.fem.Function, pf: dfx.fem.Function
-    ) -> dfx.fem.Function:
+    def stress_prime(self, strain: dfx.fem.Function, pf: dfx.fem.Function) -> dfx.fem.Function:
         """Evaluate the derivative of the heterogeneous and anisotropic general stiffness tensor.
 
         Args:
-            epsu (df.Function): Displacement
-            epsv (df.Function): Testfunction for displacement
+            strain (df.Function): Strain
             pf (df.Function): Phasefield
 
         Returns:
             df.Function: Derivative of the heterogeneous and anisotropic general stiffness tensor
         """
         i, j, k, l = indices(4)
-        return (
-            (
-                self.interpolator.prime(pf)
-                * (self.stiffness1[i, j, k, l] - self.stiffness0[i, j, k, l])
-            )
-            * epsu[k, l]
-            * epsv[i, j]
-        )
+        return as_tensor(self.interpolator.prime(pf) * (self.stiffness1[i,j,k,l] - self.stiffness0[i,j,k,l]) * strain[k,l], (i,j))
 
-    def doubleprime(
-        self, epsu: dfx.fem.Function, epsv: dfx.fem.Function, pf: dfx.fem.Function
-    ) -> dfx.fem.Function:
+    def stress_doubleprime(self, strain: dfx.fem.Function, pf: dfx.fem.Function) -> dfx.fem.Function:
         """Evaluate the second derivative of the heterogeneous and anisotropic general stiffness tensor.
 
         Args:
-            epsu (df.Function): Displacement
-            epsv (df.Function): Testfunction for displacement
+            strain (df.Function): Strain
             pf (df.Function): Phasefield
 
         Returns:
             df.Function: Second derivative of the heterogeneous and anisotropic general stiffness tensor
         """
         i, j, k, l = indices(4)
-        return (
-            (
-                self.interpolator.doubleprime(pf)
-                * (self.stiffness1[i, j, k, l] - self.stiffness0[i, j, k, l])
-            )
-            * epsu[k, l]
-            * epsv[i, j]
-        )
+        return as_tensor(self.interpolator.doubleprime(pf) * (self.stiffness1[i,j,k,l] - self.stiffness0[i,j,k,l]) * strain[k,l], (i,j))
