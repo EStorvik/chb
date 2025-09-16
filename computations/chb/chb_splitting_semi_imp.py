@@ -88,43 +88,61 @@ T = dt * num_time_steps
 max_iter = 20
 tol = 1e-6
 
+# Splitting iteration parameters
+max_iter_split = 20
+tol_split = 1e-6
+
 
 # Finite elements
 P1 = element("Lagrange", msh.basix_cell(), 1)
 P1U = element("Lagrange", msh.basix_cell(), 1, shape=(msh.geometry.dim,))
-ME = mixed_element([P1, P1, P1U, P1, P1])
+MEch = mixed_element([P1, P1])
+MEb = mixed_element([P1U, P1, P1])
 
 # Function spaces
-V = functionspace(msh, ME)
+Vch = functionspace(msh, MEch)
+Vb = functionspace(msh, MEb)
 
 # Test and trial functions
-xi = TrialFunction(V)
-eta = TestFunction(V)
-pf, mu, u, theta, p = split(xi)
-eta_pf, eta_mu, eta_u, eta_theta, eta_p = split(eta)
+xiCH = TrialFunction(Vch)
+etaCH = TestFunction(Vch)
+pf, mu = split(xiCH)
+eta_pf, eta_mu = split(etaCH)
+
+xiB = TrialFunction(Vb)
+etaB = TestFunction(Vb)
+u, theta, p = split(xiB)
+eta_u, eta_theta, eta_p = split(etaB)
 
 
 # Iteration functions
-xi_n = Function(V)
+xiCH_n = Function(Vch)
+xiB_n = Function(Vb)
 
-xi_prev = Function(V)
-pf_prev, mu_prev, u_prev, theta_prev, p_prev = xi_prev.split()
+xiCH_prev = Function(Vch)
+pf_prev, mu_prev = split(xiCH_prev)
+xiB_prev = Function(Vb)
+u_prev, theta_prev, p_prev = split(xiB_prev)
 
-xi_old = Function(V)
-pf_old, mu_old, u_old, theta_old, p_old = xi_old.split()
+xiCH_old = Function(Vch)
+pf_old, mu_old = split(xiCH_old)
+xiB_old = Function(Vb)
+u_old, theta_old, p_old = split(xiB_old)
 
 
 # Initial condtions
 initialcondition_cross = chb.initialconditions.Cross(width = 0.3)
 initialcondition = chb.initialconditions.halfnhalf
-xi_n.sub(0).interpolate(initialcondition)
-xi_n.sub(1).interpolate(lambda x: np.zeros((1, x.shape[1])))
-xi_n.sub(2).interpolate(lambda x: np.zeros((2, x.shape[1])))
-xi_n.sub(3).interpolate(lambda x: np.zeros((1, x.shape[1])))
-xi_n.sub(4).interpolate(lambda x: np.zeros((1, x.shape[1])))
-xi_n.x.scatter_forward()
+xiCH_n.sub(0).interpolate(initialcondition)
+xiCH_n.sub(1).interpolate(lambda x: np.zeros((1, x.shape[1])))
+xiCH_n.x.scatter_forward()
+pf_n, mu_n = split(xiCH_n)
 
-pf_n, mu_n, u_n, theta_n, p_n = xi_n.split()
+xiB_n.sub(0).interpolate(lambda x: np.zeros((2, x.shape[1])))
+xiB_n.sub(1).interpolate(lambda x: np.zeros((1, x.shape[1])))
+xiB_n.sub(2).interpolate(lambda x: np.zeros((1, x.shape[1])))
+xiB_n.x.scatter_forward()
+u_n, theta_n, p_n = split(xiB_n)
 
 
 # Boundary conditions
@@ -137,8 +155,8 @@ def boundary_left(x):
 def boundary_right(x):
     return np.isclose(x[0], 1.0)
 
-V_u = V.sub(2)
-V_p = V.sub(4)
+V_u = Vb.sub(0)
+V_p = Vb.sub(2)
 facets = mesh.locate_entities_boundary(msh, msh.topology.dim - 1, boundary)
 #facets_left = mesh.locate_entities_boundary(msh, msh.topology.dim -1, boundary_left)
 #facets_right = mesh.locate_entities_boundary(msh, msh.topology.dim -1, boundary_right)
@@ -147,9 +165,9 @@ dofs_p = locate_dofs_topological(V_p, msh.topology.dim - 1, facets)
 #dofs_p_left = locate_dofs_topological(V_p, msh.topology.dim - 1, facets_left)
 #dofs_p_right = locate_dofs_topological(V_p, msh.topology.dim - 1, facets_right)
 
-_, _, u_bc, _, p_bc = Function(V).split()
-#_, _, u_bc, _, p_bc_left = Function(V).split()
-#_, _, _, _, p_bc_right = Function(V).split()
+u_bc, _, p_bc = Function(Vb).split()
+#u_bc, _, p_bc_left = Function(Vb).split()
+#_, _, p_bc_right = Function(Vb).split()
 
 u_bc.interpolate(lambda x: np.zeros((2, x.shape[1])))
 bc_u = dirichletbc(u_bc, dofs_u)
@@ -188,7 +206,7 @@ F_mu = (
                 sym(grad(u_old)) - swelling(pf_old)
             )
             - inner(
-                stiffness_tensor.stress(strain=sym(grad(u)) - swelling(pf), pf=pf_old),
+                stiffness_tensor.stress(strain=sym(grad(u_prev)) - swelling(pf), pf=pf_old),
                 swelling.prime()
             ),
             eta_mu
@@ -198,7 +216,7 @@ F_mu = (
     - (
         inner(
             0.5 * compressibility.prime(pf_old) * (theta_old - alpha(pf_old) * div(u_old))**2
-            - alpha.prime(pf_old) * compressibility(pf_old) * (theta - alpha(pf_old) * div(u)) * div(u_old),
+            - alpha.prime(pf_prev) * compressibility(pf_old) * (theta_prev - alpha(pf_prev) * div(u_prev)) * div(u_prev),
             eta_mu
         )
         * dx
@@ -207,8 +225,8 @@ F_mu = (
 
 F_u = (
     inner(
-        stiffness_tensor.stress(strain=sym(grad(u)) - swelling(pf), pf=pf_old)
-        - alpha(pf_old) * compressibility(pf_old) * (theta - alpha(pf_old) * div(u)) * Identity(2),
+        stiffness_tensor.stress(strain=sym(grad(u)) - swelling(pf_prev), pf=pf_old)
+        - alpha(pf_prev) * compressibility(pf_old) * (theta - alpha(pf_prev) * div(u)) * Identity(2),
         sym(grad(eta_u))
     )
     * dx
@@ -219,21 +237,25 @@ F_theta = (
 )
 
 F_p = (
-    inner(p, eta_p) * dx - inner(compressibility(pf_old) * (theta - alpha(pf_old) * div(u)), eta_p) * dx              
+    inner(p, eta_p) * dx - inner(compressibility(pf_old) * (theta - alpha(pf_prev) * div(u)), eta_p) * dx              
 )
 
-F = F_pf + F_mu + F_u + F_theta + F_p
+Fch = F_pf + F_mu 
+Fb = F_u + F_theta + F_p
 
 
 # Set up problem
-a = lhs(F)
-L = rhs(F)
+aCH = lhs(Fch)
+lCH = rhs(Fch)
+problemCH = LinearProblem(aCH, lCH, bcs=[])
 
-problem = LinearProblem(a, L, bcs=[bc_u, bc_p]) #bcs=[bc_u, bc_p_left, bc_p_right], bcs=[bc_u]
+aB = lhs(Fb)
+lB = rhs(Fb)
+problemB = LinearProblem(aB, lB, bcs=[bc_u, bc_p]) #bcs=[bc_u, bc_p_left, bc_p_right], bcs=[bc_u]
 
 
 # Pyvista plot
-viz = chb.visualization.PyvistaVizualization(V.sub(0), xi_n.sub(0), 0.0)
+viz = chb.visualization.PyvistaVizualization(Vch.sub(0), xiCH_n.sub(0), 0.0)
 
 # Output file
 output_file_pf = XDMFFile(MPI.COMM_WORLD, f"../output/chb_{ell}ell_pf.xdmf", "w")
@@ -251,7 +273,7 @@ def energy_e(pf, u, dx):
     
 def energy_f(pf, u, theta, dx):
     return 0.5 * compressibility(pf) * (theta - alpha(pf) * div(u))**2 * dx
-    
+
 def energyTotal(pf, u, theta, dx):
     #energy_i = gamma * (1 / ell * doublewell(pf) + ell / 2 * inner(grad(pf), grad(pf))) * dx
     #energy_e = 0.5 * inner(stiffness_tensor.stress(strain=sym(grad(u)) - swelling(pf), pf=pf), sym(grad(u)) - swelling(pf)) * dx
@@ -267,35 +289,47 @@ t = 0.0
 
 for i in range(num_time_steps):
     # Set old time-step functions
-    xi_old.x.array[:] = xi_n.x.array
-    xi_old.x.scatter_forward()
-    pf_old, mu_old, u_old, theta_old, p_old = xi_old.split()
+    xiCH_old.x.array[:] = xiCH_n.x.array
+    xiCH_old.x.scatter_forward()
+    xiB_old.x.array[:] = xiB_n.x.array
+    xiB_old.x.scatter_forward()
+    
     # Update current time
     t += dt
 
-    for j in range(max_iter):
-        xi_prev.x.array[:] = xi_n.x.array
-        xi_prev.x.scatter_forward()
-        pf_prev, mu_prev, u_prev, theta_prev, p_prev = (
-            xi_prev.split()
-        )  # This seem only to be necessary for the computation of the L2-norm
-
-        # Define the problem
-        xi_n = problem.solve()
-        xi_n.x.scatter_forward()
-        pf_n, mu_n, u_n, theta_n, p_n = (
-            xi_n.split()
-        )  # This seem only to be necessary for the computation of the L2-norm
-
-        increment = chb.util.l2norm_3(pf_n - pf_prev, u_n - u_prev, p_n - p_prev) #chb.util.l2norm(pf_n - pf_prev)
-        #print(f"Norm at time step {i} iteration {j}: {increment}")
-        # print(f"Norms for pf, mu, u are: {chb.util.l2norm(pf_n-pf_prev)}, {chb.util.l2norm(mu_n-mu_prev)}, {chb.util.l2norm(u_n-u_prev)}")
+    for j in range(max_iter_split):
+        # Set previous iteration function
+        xiB_prev.x.array[:] = xiB_n.x.array
+        xiB_prev.x.scatter_forward()
         
-        # Update the plot window
-        viz.update(xi_n.sub(0), t)
+        for k in range(max_iter):
+            xiCH_prev.x.array[:] = xiCH_n.x.array
+            xiCH_prev.x.scatter_forward()
+            pf_prev, mu_prev = xiCH_prev.split() # This seem only to be necessary for the computation of the L2-norm
+
+            # Define the problem
+            xiCH_n = problemCH.solve()
+            xiCH_n.x.scatter_forward()
+            pf_n, mu_n = xiCH_n.split() # This seem only to be necessary for the computation of the L2-norm
+
+            increment = chb.util.l2norm(pf_n - pf_prev)
+            #print(f"Increment norm for pf at time step {i} splitting step {j} Newton iteration {k}: {increment_pf}")
         
-        if increment < tol:
-            break
+            if increment < tol:
+                break
+    
+        xiB_n = problemB.solve()
+        xiB_n.x.scatter_forward()
+        u_n, theta_n, p_n = xiB_n.split() 
+        
+        increment_split = chb.util.l2norm_3(pf_n - pf_prev, u_n - u_prev, p_n - p_prev)
+        print(f"Increment norm at time step {i} splitting step {j}: {increment_split}")
+        
+        if increment_split < tol_split:
+            break 
+            
+    # Update the plot window
+    viz.update(xiCH_n.sub(0), t)
     
     energy_total = energyTotal(pf_n, u_n, theta_n, dx = Measure("dx", domain=msh))        
     energy = assemble_scalar(form(energy_total))
@@ -305,12 +339,13 @@ for i in range(num_time_steps):
     energy_vec.append(energy)
 
     # Output
-    pf_out, _, _, _, p_out = xi_n.split()
+    pf_out, _ = xiCH_n.split()
     output_file_pf.write_function(pf_out, t)
+    _, _, p_out = xiB_n.split()
     output_file_p.write_function(p_out, t)
 
 
-viz.final_plot(xi_n.sub(0))
+viz.final_plot(xiCH_n.sub(0))
 
 plt.figure()
 plt.plot(t_vec, energy_vec, label=f"Total energy")
@@ -340,7 +375,7 @@ def plot_along_line(u, msh, y=0.5, filename="line_data.npy"):
 
     plt.show()
 
-plot_along_line(pf_n, msh=msh, filename=f"../output/line_data_{ell}ell.npy")
+#plot_along_line(xiCH_n.sub(0), msh=msh, filename=f"../output/line_data_{ell}ell.npy")
 
 output_file_pf.close()
 output_file_p.close()
