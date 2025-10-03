@@ -1,2 +1,3 @@
 from chb.parameters.energies.doublewell.classic_doublewell import DoubleWellPotential
 from chb.parameters.energies.doublewell.classic_doublewell_cutoff import DoubleWellPotential_cutoff
+from chb.parameters.energies.doublewell.classic_doublewell_cutoff import SymmetricDoubleWellPotential_cutoff
