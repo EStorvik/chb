@@ -48,7 +48,7 @@ from ufl import (
     dx,
     rhs,
     lhs,
-    div,
+    nabla_div,
 )
 
 # Spatial discretization
@@ -61,22 +61,19 @@ msh = mesh.create_unit_square(MPI.COMM_WORLD, nx, ny, mesh.CellType.triangle)
 ell = 0.1
 gamma = 1
 mobility = 1
-doublewell = chb.energies.DoubleWellPotential_cutoff()
+doublewell = chb.energies.DoubleWellPotential()
 
 # Elasticity
-# isotropic stiffness tensor
-#stiffness_tensor = chb.elasticity.IsotropicStiffnessTensor(
-#    lame_lambda_0=20, lame_mu_0=100, lame_lambda_1=0.1, lame_mu_1=1
-#)
-# heterogeneous and anisotropic stiffness tensor
-stiffness_tensor = chb.elasticity.HeterogeneousStiffnessTensor()
-swelling = chb.elasticity.Swelling(swelling_parameter=0.1, pf_ref=0)
+stiffness_tensor = chb.elasticity.IsotropicStiffnessTensor(
+    lame_lambda_0=20, lame_mu_0=100, lame_lambda_1=0.1, lame_mu_1=1
+)
+swelling = chb.elasticity.Swelling(swelling_parameter=0.1, pf_ref=0.5)
 
 # Biot
 alpha = chb.biot.NonlinearBiotCoupling(alpha0=1, alpha1=0.1)
 
 # Flow
-permeability = 1
+permeability = chb.flow.NonlinearPermeability(k0=1, k1=0.01)
 compressibility = chb.flow.NonlinearCompressibility(M0=1, M1=0.1)
 
 # Time discretization
@@ -92,39 +89,72 @@ tol = 1e-6
 # Finite elements
 P1 = element("Lagrange", msh.basix_cell(), 1)
 P1U = element("Lagrange", msh.basix_cell(), 1, shape=(msh.geometry.dim,))
-ME = mixed_element([P1, P1, P1U, P1, P1])
+P0 = element("DG", msh.basix_cell(), 0)
+Q1 = element("RT", msh.basix_cell(), 1)
+ME_ch = mixed_element([P1, P1])
+ME_f = mixed_element([P0, Q1])
 
 # Function spaces
-V = functionspace(msh, ME)
+V_ch = functionspace(msh, ME_ch)
+V_e = functionspace(msh, P1U)
+V_f = functionspace(msh, ME_f)
 
 # Test and trial functions
-xi = TrialFunction(V)
-eta = TestFunction(V)
-pf, mu, u, theta, p = split(xi)
-eta_pf, eta_mu, eta_u, eta_theta, eta_p = split(eta)
+#ch
+xi_ch = TrialFunction(V_ch)
+eta_ch = TestFunction(V_ch)
+pf, mu = split(xi_ch)
+eta_pf, eta_mu = split(eta_ch)
+
+#e
+u = TrialFunction(V_e)
+eta_u = TestFunction(V_e)
+
+#f
+xi_f = TrialFunction(V_f)
+eta_f = TestFunction(V_f)
+p, q = split(xi_f)
+eta_p, eta_q = split(eta_f)
 
 
 # Iteration functions
-xi_n = Function(V)
+#CH
+xi_ch_n = Function(V_ch)
 
-xi_prev = Function(V)
-pf_prev, mu_prev, u_prev, theta_prev, p_prev = xi_prev.split()
+xi_ch_prev = Function(V_ch)
+pf_prev, mu_prev = xi_ch_prev.split()
 
-xi_old = Function(V)
-pf_old, mu_old, u_old, theta_old, p_old = xi_old.split()
+xi_ch_old = Function(V_ch)
+pf_old, mu_old = xi_ch_old.split()
 
+# E
+xi_e_n = Function(V_e)
+
+u_prev = Function(V_e)
+
+u_old = Function(V_e)
+
+# F
+xi_f_n = Function(V_f)
+p_n, q_n = xi_f_n.split()
+
+xi_f_prev = Function(V_f)
+p_prev, q_prev = xi_f_prev.split()
+
+xi_f_old = Function(V_f)
+p_old, q_old = xi_f_old.split()
 
 # Initial condtions
 initialcondition_cross = chb.initialconditions.Cross(width = 0.3)
 initialcondition = chb.initialconditions.halfnhalf
-xi_n.sub(0).interpolate(initialcondition)
-xi_n.sub(1).interpolate(lambda x: np.zeros((1, x.shape[1])))
-xi_n.sub(2).interpolate(lambda x: np.zeros((2, x.shape[1])))
-xi_n.sub(3).interpolate(lambda x: np.zeros((1, x.shape[1])))
-xi_n.sub(4).interpolate(lambda x: np.zeros((1, x.shape[1])))
-xi_n.x.scatter_forward()
+xi_ch_n.sub(0).interpolate(initialcondition)
+# xi_n.sub(1).interpolate(lambda x: np.zeros((1, x.shape[1])))
+# xi_n.sub(2).interpolate(lambda x: np.zeros((2, x.shape[1])))
+# xi_n.sub(3).interpolate(lambda x: np.zeros((1, x.shape[1])))
+# xi_n.sub(4).interpolate(lambda x: np.zeros((2, x.shape[1])))
+xi_ch_n.x.scatter_forward()
 
-pf_n, mu_n, u_n, theta_n, p_n = xi_n.split()
+pf_n, mu_n = xi_ch_n.split()
 
 
 # Boundary conditions
@@ -137,31 +167,27 @@ def boundary_left(x):
 def boundary_right(x):
     return np.isclose(x[0], 1.0)
 
-V_u = V.sub(2)
-V_p = V.sub(4)
+V_u = V_e
+V_p = V_f.sub(0)
 facets = mesh.locate_entities_boundary(msh, msh.topology.dim - 1, boundary)
-#facets_left = mesh.locate_entities_boundary(msh, msh.topology.dim -1, boundary_left)
-#facets_right = mesh.locate_entities_boundary(msh, msh.topology.dim -1, boundary_right)
+facets_left = mesh.locate_entities_boundary(msh, msh.topology.dim -1, boundary_left)
+facets_right = mesh.locate_entities_boundary(msh, msh.topology.dim -1, boundary_right)
 dofs_u = locate_dofs_topological(V_u, msh.topology.dim - 1, facets)
-dofs_p = locate_dofs_topological(V_p, msh.topology.dim - 1, facets)
-#dofs_p_left = locate_dofs_topological(V_p, msh.topology.dim - 1, facets_left)
-#dofs_p_right = locate_dofs_topological(V_p, msh.topology.dim - 1, facets_right)
+dofs_p_left = locate_dofs_topological(V_p, msh.topology.dim - 1, facets_left)
+dofs_p_right = locate_dofs_topological(V_p, msh.topology.dim - 1, facets_right)
 
-_, _, u_bc, _, p_bc = Function(V).split()
-#_, _, u_bc, _, p_bc_left = Function(V).split()
-#_, _, _, _, p_bc_right = Function(V).split()
 
+u_bc = Function(V_e)
+p_bc_left, _ = Function(V_f).split()
+p_bc_right, _ = Function(V_f).split()
 u_bc.interpolate(lambda x: np.zeros((2, x.shape[1])))
 bc_u = dirichletbc(u_bc, dofs_u)
+ 
+p_bc_left.interpolate(lambda x: np.ones((1, x.shape[1])))
+p_bc_right.interpolate(lambda x: np.zeros((1, x.shape[1])))
 
-p_bc.interpolate(lambda x: np.zeros((1, x.shape[1])))
-bc_p = dirichletbc(p_bc, dofs_p)
-
-#p_bc_left.interpolate(lambda x: np.ones((1, x.shape[1])))
-#p_bc_right.interpolate(lambda x: np.zeros((1, x.shape[1])))
-
-#bc_p_left = dirichletbc(p_bc_left, dofs_p_left)
-#bc_p_right = dirichletbc(p_bc_right, dofs_p_right)
+bc_p_left = dirichletbc(p_bc_left, dofs_p_left)
+bc_p_right = dirichletbc(p_bc_right, dofs_p_right)
 
 # Linear variational forms
 F_pf = (
@@ -171,35 +197,42 @@ F_pf = (
 F_mu = (
     inner(mu, eta_mu) * dx
     - gamma * ell * inner(grad(pf), grad(eta_mu)) * dx
-    - gamma / ell
+    - gamma
+    / ell
     * inner(
         (
-            doublewell.cprime(pf_prev) + doublewell.cdoubleprime(pf_prev) * (pf - pf_prev)
+            doublewell.cprime(pf_prev)
+            + doublewell.cdoubleprime(pf_prev) * (pf - pf_prev)
             - doublewell.eprime(pf_old)
         ),
-        eta_mu
+        eta_mu,
     )
     * dx
     - (
-        inner(
-            0.5 *
+        0.5
+        * inner(
             inner(
-                stiffness_tensor.stress_prime(strain=sym(grad(u_old)) - swelling(pf_old), pf=pf_old),
-                sym(grad(u_old)) - swelling(pf_old)
+                stiffness_tensor.stress_prime(
+                    strain=sym(grad(u_old)) - swelling(pf_old),
+                    pf=pf_old,
+                ),
+                sym(grad(u_old)) - swelling(pf_old),
             )
             - inner(
                 stiffness_tensor.stress(strain=sym(grad(u)) - swelling(pf), pf=pf_old),
-                swelling.prime()
+                swelling.prime(),
             ),
-            eta_mu
+            eta_mu,
         )
     )
     * dx
     - (
         inner(
-            0.5 * compressibility.prime(pf_old) * (theta_old - alpha(pf_old) * div(u_old))**2
-            - alpha.prime(pf_old) * compressibility(pf_old) * (theta - alpha(pf_old) * div(u)) * div(u_old),
-            eta_mu
+            compressibility.prime(pf_old)
+            * p_old**2
+            / (2 * compressibility(pf_old) ** 2)
+            - p_old * alpha.prime(pf_old) * nabla_div(u_old),
+            eta_mu,
         )
         * dx
     )
@@ -208,28 +241,37 @@ F_mu = (
 F_u = (
     inner(
         stiffness_tensor.stress(strain=sym(grad(u)) - swelling(pf), pf=pf_old)
-        - alpha(pf_old) * compressibility(pf_old) * (theta - alpha(pf_old) * div(u)) * Identity(2),
-        sym(grad(eta_u))
+        - alpha(pf_old) * p * Identity(2),
+        sym(grad(eta_u)),
     )
     * dx
 )
 
-F_theta = (
-    inner(theta - theta_old, eta_theta) * dx + dt * permeability * inner(grad(p), grad(eta_theta)) * dx
-)
-
 F_p = (
-    inner(p, eta_p) * dx - inner(compressibility(pf_old) * (theta - alpha(pf_old) * div(u)), eta_p) * dx              
+    inner(
+        (
+            p / compressibility(pf_old)
+            + alpha(pf_old) * nabla_div(u)
+            - p_old / compressibility(pf_old)
+            - alpha(pf_old) * nabla_div(u_old)
+        )
+        / dt
+        + nabla_div(q),
+        eta_p,
+    )
+    * dx
 )
 
-F = F_pf + F_mu + F_u + F_theta + F_p
+F_q = inner(q / permeability(pf_old), eta_q) * dx - inner(p, nabla_div(eta_q)) * dx
+
+F = F_pf + F_mu + F_u + F_p + F_q
 
 
 # Set up problem
 a = lhs(F)
 L = rhs(F)
 
-problem = LinearProblem(a, L, bcs=[bc_u, bc_p]) #bcs=[bc_u, bc_p_left, bc_p_right], bcs=[bc_u]
+problem = LinearProblem(a, L, bcs=[bc_u, bc_p_left, bc_p_right])
 
 
 # Pyvista plot
@@ -242,79 +284,50 @@ output_file_p = XDMFFile(MPI.COMM_WORLD, f"../output/chb_{ell}ell_p.xdmf", "w")
 output_file_pf.write_mesh(msh)
 output_file_p.write_mesh(msh)
 
-# Energy
-def energy_i(pf, dx):
-    return gamma * (1 / ell * doublewell(pf) + ell / 2 * inner(grad(pf), grad(pf))) * dx
-    
-def energy_e(pf, u, dx):
-    return 0.5 * inner(stiffness_tensor.stress(strain=sym(grad(u)) - swelling(pf), pf=pf), sym(grad(u)) - swelling(pf)) * dx
-    
-def energy_f(pf, u, theta, dx):
-    return 0.5 * compressibility(pf) * (theta - alpha(pf) * div(u))**2 * dx
-    
-def energyTotal(pf, u, theta, dx):
-    #energy_i = gamma * (1 / ell * doublewell(pf) + ell / 2 * inner(grad(pf), grad(pf))) * dx
-    #energy_e = 0.5 * inner(stiffness_tensor.stress(strain=sym(grad(u)) - swelling(pf), pf=pf), sym(grad(u)) - swelling(pf)) * dx
-    #energy_f = 0.5 * compressibility(pf) * (theta - alpha(pf) * div(u))**2 * dx
-    #return energy_i + energy_e + energy_f
-    return energy_i(pf, dx) + energy_e(pf, u, dx) + energy_f(pf, u, theta, dx)
-    
-t_vec = []
-energy_vec = []
 
 # Time stepping
 t = 0.0
+
 
 for i in range(num_time_steps):
     # Set old time-step functions
     xi_old.x.array[:] = xi_n.x.array
     xi_old.x.scatter_forward()
-    pf_old, mu_old, u_old, theta_old, p_old = xi_old.split()
+    pf_old, mu_old, u_old, p_old, q_old = xi_old.split()
     # Update current time
     t += dt
 
     for j in range(max_iter):
         xi_prev.x.array[:] = xi_n.x.array
         xi_prev.x.scatter_forward()
-        pf_prev, mu_prev, u_prev, theta_prev, p_prev = (
+        pf_prev, mu_prev, u_prev, p_old, q_old = (
             xi_prev.split()
         )  # This seem only to be necessary for the computation of the L2-norm
 
         # Define the problem
         xi_n = problem.solve()
         xi_n.x.scatter_forward()
-        pf_n, mu_n, u_n, theta_n, p_n = (
+        pf_n, mu_n, u_n, p_old, q_old = (
             xi_n.split()
         )  # This seem only to be necessary for the computation of the L2-norm
 
-        increment = chb.util.l2norm_3(pf_n - pf_prev, u_n - u_prev, p_n - p_prev) #chb.util.l2norm(pf_n - pf_prev)
-        #print(f"Norm at time step {i} iteration {j}: {increment}")
-        # print(f"Norms for pf, mu, u are: {chb.util.l2norm(pf_n-pf_prev)}, {chb.util.l2norm(mu_n-mu_prev)}, {chb.util.l2norm(u_n-u_prev)}")
-        
-        # Update the plot window
+        increment = chb.util.l2norm(pf_n - pf_prev)
+        print(f"Norm at time step {i} iteration {j}: {increment}")
+        # print(f"Norms for pf, mu, u are: {chb.util.l2norm(pf_n-pf_prev)} {chb.util.l2norm(mu_n-mu_prev)}, {chb.util.l2norm(u_n-u_prev)}")
         viz.update(xi_n.sub(0), t)
-        
         if increment < tol:
             break
-    
-    energy_total = energyTotal(pf_n, u_n, theta_n, dx = Measure("dx", domain=msh))        
-    energy = assemble_scalar(form(energy_total))
-    print(f"Energy at time step {i}: {energy}")
-    
-    t_vec.append(t)
-    energy_vec.append(energy)
+
+        # Update the plot window
 
     # Output
-    pf_out, _, _, _, p_out = xi_n.split()
+    pf_out, _, _, p_out, _ = xi_n.split()
     output_file_pf.write_function(pf_out, t)
     output_file_p.write_function(p_out, t)
 
 
 viz.final_plot(xi_n.sub(0))
 
-plt.figure()
-plt.plot(t_vec, energy_vec, label=f"Total energy")
-plt.show()
 
 def plot_along_line(u, msh, y=0.5, filename="line_data.npy"):
     # Create an array of x-coordinates along the line y=0.5
