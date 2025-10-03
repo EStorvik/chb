@@ -79,7 +79,7 @@ doublewell = chb.energies.SymmetricDoubleWellPotential_cutoff()
 # heterogeneous and anisotropic stiffness tensor
 interpolator = chb.interpolate.SymmetricStandardInterpolator()
 stiffness_tensor = chb.elasticity.HeterogeneousStiffnessTensor(interpolator=interpolator)
-swelling = chb.elasticity.Swelling(swelling_parameter=0.1, pf_ref=0.5)
+swelling = chb.elasticity.Swelling(swelling_parameter=0.1, pf_ref=0.0)
 
 # Biot
 alpha = chb.biot.NonlinearBiotCoupling(alpha0=1, alpha1=0.1, interpolator=interpolator)
