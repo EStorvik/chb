@@ -69,7 +69,7 @@ msh = mesh.create_unit_square(MPI.COMM_WORLD, nx, ny, mesh.CellType.triangle)
 ell = 0.025
 gamma = 16
 mobility = 1
-doublewell = chb.energies.DoubleWellPotential_cutoff()
+doublewell = chb.energies.SymmetricDoubleWellPotential_cutoff()
 
 # Elasticity
 # isotropic stiffness tensor
@@ -77,15 +77,16 @@ doublewell = chb.energies.DoubleWellPotential_cutoff()
 #    lame_lambda_0=20, lame_mu_0=100, lame_lambda_1=0.1, lame_mu_1=1
 #)
 # heterogeneous and anisotropic stiffness tensor
-stiffness_tensor = chb.elasticity.HeterogeneousStiffnessTensor()
+interpolator = chb.interpolate.SymmetricStandardInterpolator()
+stiffness_tensor = chb.elasticity.HeterogeneousStiffnessTensor(interpolator=interpolator)
 swelling = chb.elasticity.Swelling(swelling_parameter=0.1, pf_ref=0.5)
 
 # Biot
-alpha = chb.biot.NonlinearBiotCoupling(alpha0=1, alpha1=0.1)
+alpha = chb.biot.NonlinearBiotCoupling(alpha0=1, alpha1=0.1, interpolator=interpolator)
 
 # Flow
 permeability = 1
-compressibility = chb.flow.NonlinearCompressibility(M0=1, M1=0.1)
+compressibility = chb.flow.NonlinearCompressibility(M0=1, M1=0.1, interpolator=interpolator)
 
 # Time discretization
 dt = 1.0e-3
@@ -134,7 +135,7 @@ u_prev, theta_prev, p_prev = split(xiB_prev)
 
 # Initial condtions
 initialcondition_cross = chb.initialconditions.Cross(width = 0.3)
-initialcondition = chb.initialconditions.halfnhalf
+initialcondition = chb.initialconditions.symmetrichalfnhalf
 xiCH.sub(0).interpolate(initialcondition)
 xiCH.sub(1).interpolate(lambda x: np.zeros((1, x.shape[1])))
 xiCH.x.scatter_forward()
