@@ -64,7 +64,7 @@ msh = mesh.create_unit_square(MPI.COMM_WORLD, nx, ny, mesh.CellType.triangle)
 
 # CH
 ell = 0.025
-gamma = 16
+gamma = 2
 mobility = 1
 doublewell = chb.energies.SymmetricDoubleWellPotential_cutoff()
 
@@ -76,7 +76,7 @@ doublewell = chb.energies.SymmetricDoubleWellPotential_cutoff()
 # heterogeneous and anisotropic stiffness tensor
 interpolator = chb.interpolate.SymmetricStandardInterpolator()
 stiffness_tensor = chb.elasticity.HeterogeneousStiffnessTensor(interpolator=interpolator)
-swelling = chb.elasticity.Swelling(swelling_parameter=0.1, pf_ref=0)
+swelling = chb.elasticity.Swelling(swelling_parameter=0.125, pf_ref=0)
 
 # Biot
 alpha = chb.biot.NonlinearBiotCoupling(alpha0=1, alpha1=0.1, interpolator=interpolator)
@@ -382,31 +382,31 @@ except ImportError:
 # plt.grid(True, alpha=0.3)
 # plt.show()
 
-def plot_along_line(u, msh, y=0.5, filename="line_data.npy"):
-    # Create an array of x-coordinates along the line y=0.5
-    x_coords = np.linspace(msh.geometry.x.min(), msh.geometry.x.max(), 100)
-    y_coord = y
-    points = np.array([[x, y_coord, 0] for x in x_coords])
+# def plot_along_line(u, msh, y=0.5, filename="line_data.npy"):
+#     # Create an array of x-coordinates along the line y=0.5
+#     x_coords = np.linspace(msh.geometry.x.min(), msh.geometry.x.max(), 100)
+#     y_coord = y
+#     points = np.array([[x, y_coord, 0] for x in x_coords])
 
-    tree = bb_tree(msh, msh.geometry.dim)
-    values = []
+#     tree = bb_tree(msh, msh.geometry.dim)
+#     values = []
 
-    for point in points:
-        cell_candidates = compute_collisions_points(tree, point.T)
-        cell = compute_colliding_cells(msh, cell_candidates, point).array
-        assert len(cell) > 0
-        first_cell = cell[0]
-        values.append(u.eval(point, first_cell))
+#     for point in points:
+#         cell_candidates = compute_collisions_points(tree, point.T)
+#         cell = compute_colliding_cells(msh, cell_candidates, point).array
+#         assert len(cell) > 0
+#         first_cell = cell[0]
+#         values.append(u.eval(point, first_cell))
 
-    # Save the x-coordinates and values to a numpy file
-    np.save(filename, {"x_coords": x_coords, "values": values})
+#     # Save the x-coordinates and values to a numpy file
+#     np.save(filename, {"x_coords": x_coords, "values": values})
 
-    plt.figure()
-    plt.plot(x_coords, values, label=f"Solution at y={0.5}")
+#     plt.figure()
+#     plt.plot(x_coords, values, label=f"Solution at y={0.5}")
 
-    plt.show()
+#     plt.show()
 
-plot_along_line(xi.sub(0), msh=msh, filename=f"../output/line_data_{ell}ell.npy")
+# plot_along_line(xi.sub(0), msh=msh, filename=f"../output/line_data_{ell}ell.npy")
 
 output_file_pf.close()
 output_file_p.close()

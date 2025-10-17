@@ -45,16 +45,16 @@ class SymmetricStandardInterpolator:
 
     def prime(self, pf):
         return ufl.conditional(
-            ufl.le(pf, 0),
+            ufl.le(pf, -1),
             0,
             ufl.conditional(
-                ufl.ge(pf, 1), 0, 0.25 * (-3)*pf**2 + 3
+                ufl.ge(pf, 1), 0, 0.25 * (-3*pf**2 + 3)
             ),
         )
 
     def doubleprime(self, pf):
         return ufl.conditional(
-            ufl.le(pf, 0),
+            ufl.le(pf, -1),
             0,
             ufl.conditional(ufl.ge(pf, 1), 0, 0.25* (-6) * pf),
         )
