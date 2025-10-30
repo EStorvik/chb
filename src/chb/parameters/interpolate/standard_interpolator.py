@@ -5,27 +5,56 @@ class StandardInterpolator:
     def __init__(self):
         pass
 
-    def __call__(self, phasefield):
+    def __call__(self, pf):
         return ufl.conditional(
-            ufl.le(phasefield, 0),
+            ufl.le(pf, 0),
             0,
             ufl.conditional(
-                ufl.ge(phasefield, 1), 1, -2 * phasefield**3 + 3 * phasefield**2
+                ufl.ge(pf, 1), 1, -2 * pf**3 + 3 * pf**2
             ),
         )
 
-    def prime(self, phasefield):
+    def prime(self, pf):
         return ufl.conditional(
-            ufl.le(phasefield, 0),
+            ufl.le(pf, 0),
             0,
             ufl.conditional(
-                ufl.ge(phasefield, 1), 0, -6 * phasefield**2 + 6 * phasefield
+                ufl.ge(pf, 1), 0, -6 * pf**2 + 6 * pf
             ),
         )
 
-    def doubleprime(self, phasefield):
+    def doubleprime(self, pf):
         return ufl.conditional(
-            ufl.le(phasefield, 0),
+            ufl.le(pf, 0),
             0,
-            ufl.conditional(ufl.ge(phasefield, 1), 0, -12 * phasefield + 6),
+            ufl.conditional(ufl.ge(pf, 1), 0, -12 * pf + 6),
+        )
+
+class SymmetricStandardInterpolator:
+    def __init__(self):
+        pass
+
+    def __call__(self, pf):
+        return ufl.conditional(
+            ufl.le(pf, -1),
+            0,
+            ufl.conditional(
+                ufl.ge(pf, 1), 1, 0.25 *(- pf**3 + 3 * pf + 2)
+            ),
+        )
+
+    def prime(self, pf):
+        return ufl.conditional(
+            ufl.le(pf, -1),
+            0,
+            ufl.conditional(
+                ufl.ge(pf, 1), 0, 0.25 * (-3*pf**2 + 3)
+            ),
+        )
+
+    def doubleprime(self, pf):
+        return ufl.conditional(
+            ufl.le(pf, -1),
+            0,
+            ufl.conditional(ufl.ge(pf, 1), 0, 0.25* (-6) * pf),
         )

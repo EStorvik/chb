@@ -10,17 +10,17 @@ class Swelling:
     def __init__(
         self,
         swelling_parameter: float,
-        pf_ref: float = 0.5,
+        pf_ref: float = 0.0,
         dim: int = 2,
     ) -> None:
         """Initialize the swelling term
 
         Args:
-            swelling_parameter (float): Swelling parameter
+            swelling_parameter (float): Swelling parameter. Defaults to 0.
             dim (int, optional): Dimension. Defaults to 2.
 
         Attributes:
-            swelling_parameter (float): Swelling parameter
+            swelling_parameter (float): Swelling parameter.
             dim (int): Dimension.
         """
         self.swelling_parameter = swelling_parameter

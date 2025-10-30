@@ -36,7 +36,7 @@ class IsotropicStiffnessTensor:
         pass
 
     def stress(self, strain, pf):
-        return self.lame_lambda(pf)* ufl.tr(strain)*ufl.Identity(self.dim) + 2*self.lame_mu(pf)*strain
+        return self.lame_lambda(pf)*ufl.tr(strain)*ufl.Identity(self.dim) + 2*self.lame_mu(pf)*strain
     
     def stress_prime(self, strain, pf):
         return self.lame_lambda_prime(pf)*ufl.tr(strain)*ufl.Identity(self.dim) + 2*self.lame_mu_prime(pf)*strain

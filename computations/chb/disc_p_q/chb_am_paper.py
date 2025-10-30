@@ -91,39 +91,70 @@ P1 = element("Lagrange", msh.basix_cell(), 1)
 P1U = element("Lagrange", msh.basix_cell(), 1, shape=(msh.geometry.dim,))
 P0 = element("DG", msh.basix_cell(), 0)
 Q1 = element("RT", msh.basix_cell(), 1)
-ME = mixed_element([P1, P1, P1U, P0, Q1])
+ME_ch = mixed_element([P1, P1])
+ME_f = mixed_element([P0, Q1])
 
 # Function spaces
-V = functionspace(msh, ME)
+V_ch = functionspace(msh, ME_ch)
+V_e = functionspace(msh, P1U)
+V_f = functionspace(msh, ME_f)
 
 # Test and trial functions
-xi = TrialFunction(V)
-eta = TestFunction(V)
-pf, mu, u, p, q = split(xi)
-eta_pf, eta_mu, eta_u, eta_p, eta_q = split(eta)
+#ch
+xi_ch = TrialFunction(V_ch)
+eta_ch = TestFunction(V_ch)
+pf, mu = split(xi_ch)
+eta_pf, eta_mu = split(eta_ch)
+
+#e
+u = TrialFunction(V_e)
+eta_u = TestFunction(V_e)
+
+#f
+xi_f = TrialFunction(V_f)
+eta_f = TestFunction(V_f)
+p, q = split(xi_f)
+eta_p, eta_q = split(eta_f)
 
 
 # Iteration functions
-xi_n = Function(V)
+#CH
+xi_ch_n = Function(V_ch)
 
-xi_prev = Function(V)
-pf_prev, mu_prev, u_prev, p_prev, q_prev = xi_prev.split()
+xi_ch_prev = Function(V_ch)
+pf_prev, mu_prev = xi_ch_prev.split()
 
-xi_old = Function(V)
-pf_old, mu_old, u_old, p_old, q_old = xi_old.split()
+xi_ch_old = Function(V_ch)
+pf_old, mu_old = xi_ch_old.split()
 
+# E
+xi_e_n = Function(V_e)
+
+u_prev = Function(V_e)
+
+u_old = Function(V_e)
+
+# F
+xi_f_n = Function(V_f)
+p_n, q_n = xi_f_n.split()
+
+xi_f_prev = Function(V_f)
+p_prev, q_prev = xi_f_prev.split()
+
+xi_f_old = Function(V_f)
+p_old, q_old = xi_f_old.split()
 
 # Initial condtions
 initialcondition_cross = chb.initialconditions.Cross(width = 0.3)
 initialcondition = chb.initialconditions.halfnhalf
-xi_n.sub(0).interpolate(initialcondition)
-xi_n.sub(1).interpolate(lambda x: np.zeros((1, x.shape[1])))
-xi_n.sub(2).interpolate(lambda x: np.zeros((2, x.shape[1])))
-xi_n.sub(3).interpolate(lambda x: np.zeros((1, x.shape[1])))
-xi_n.sub(4).interpolate(lambda x: np.zeros((2, x.shape[1])))
-xi_n.x.scatter_forward()
+xi_ch_n.sub(0).interpolate(initialcondition)
+# xi_n.sub(1).interpolate(lambda x: np.zeros((1, x.shape[1])))
+# xi_n.sub(2).interpolate(lambda x: np.zeros((2, x.shape[1])))
+# xi_n.sub(3).interpolate(lambda x: np.zeros((1, x.shape[1])))
+# xi_n.sub(4).interpolate(lambda x: np.zeros((2, x.shape[1])))
+xi_ch_n.x.scatter_forward()
 
-pf_n, mu_n, u_n, p_n, q_n = xi_n.split()
+pf_n, mu_n = xi_ch_n.split()
 
 
 # Boundary conditions
@@ -136,8 +167,8 @@ def boundary_left(x):
 def boundary_right(x):
     return np.isclose(x[0], 1.0)
 
-V_u = V.sub(2)
-V_p = V.sub(3)
+V_u = V_e
+V_p = V_f.sub(0)
 facets = mesh.locate_entities_boundary(msh, msh.topology.dim - 1, boundary)
 facets_left = mesh.locate_entities_boundary(msh, msh.topology.dim -1, boundary_left)
 facets_right = mesh.locate_entities_boundary(msh, msh.topology.dim -1, boundary_right)
@@ -146,11 +177,12 @@ dofs_p_left = locate_dofs_topological(V_p, msh.topology.dim - 1, facets_left)
 dofs_p_right = locate_dofs_topological(V_p, msh.topology.dim - 1, facets_right)
 
 
-_, _, u_bc, p_bc_left, _ = Function(V).split()
-_, _, _, p_bc_right, _ = Function(V).split()
+u_bc = Function(V_e)
+p_bc_left, _ = Function(V_f).split()
+p_bc_right, _ = Function(V_f).split()
 u_bc.interpolate(lambda x: np.zeros((2, x.shape[1])))
 bc_u = dirichletbc(u_bc, dofs_u)
-
+ 
 p_bc_left.interpolate(lambda x: np.ones((1, x.shape[1])))
 p_bc_right.interpolate(lambda x: np.zeros((1, x.shape[1])))
 
