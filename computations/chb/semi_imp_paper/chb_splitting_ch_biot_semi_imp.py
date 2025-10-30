@@ -1,63 +1,38 @@
-import chb
-
-import numpy as np
-
-from mpi4py import MPI
-
-import pandas
-
+import os
 from time import time
 
-
-from petsc4py import PETSc
-
+import numpy as np
+import pandas
 from basix.ufl import element, mixed_element
-
-import matplotlib.pyplot as plt
-
 from dolfinx import mesh
-from dolfinx.io import XDMFFile
 from dolfinx.fem import (
-    functionspace,
     Function,
-    Expression,
     assemble_scalar,
-    form,
-    locate_dofs_topological,
     dirichletbc,
+    form,
+    functionspace,
+    locate_dofs_topological,
 )
-
-from dolfinx.geometry import bb_tree, compute_colliding_cells, compute_collisions_points
-
-
-from dolfinx.fem.petsc import (
-    LinearProblem,
-    assemble_matrix,
-    assemble_vector,
-    create_matrix,
-    create_vector,
-    apply_lifting,
-    set_bc,
-    NonlinearProblem
-)
-
+from dolfinx.fem.petsc import LinearProblem, NonlinearProblem
+from dolfinx.io import XDMFFile
 from dolfinx.nls.petsc import NewtonSolver
-
+from mpi4py import MPI
 from ufl import (
+    Identity,
     Measure,
     TestFunction,
     TrialFunction,
-    split,
-    Constant,
-    Identity,
-    inner,
-    grad,
-    sym,
-    dx,
-    rhs,
-    lhs,
     div,
+    dx,
+    grad,
+    inner,
+    lhs,
+    rhs,
+    split,
+    sym,
 )
+
+import chb
 
 # Spatial discretization
 nx = ny = 64
@@ -73,12 +48,14 @@ doublewell = chb.energies.SymmetricDoubleWellPotential_cutoff()
 
 # Elasticity
 # isotropic stiffness tensor
-#stiffness_tensor = chb.elasticity.IsotropicStiffnessTensor(
+# stiffness_tensor = chb.elasticity.IsotropicStiffnessTensor(
 #    lame_lambda_0=20, lame_mu_0=100, lame_lambda_1=0.1, lame_mu_1=1
-#)
+# )
 # heterogeneous and anisotropic stiffness tensor
 interpolator = chb.interpolate.SymmetricStandardInterpolator()
-stiffness_tensor = chb.elasticity.HeterogeneousStiffnessTensor(interpolator=interpolator)
+stiffness_tensor = chb.elasticity.HeterogeneousStiffnessTensor(
+    interpolator=interpolator
+)
 swelling = chb.elasticity.Swelling(swelling_parameter=0.0625, pf_ref=0.0)
 
 # Biot
@@ -86,7 +63,9 @@ alpha = chb.biot.NonlinearBiotCoupling(alpha0=1, alpha1=0.1, interpolator=interp
 
 # Flow
 permeability = 1
-compressibility = chb.flow.NonlinearCompressibility(M0=1, M1=0.1, interpolator=interpolator)
+compressibility = chb.flow.NonlinearCompressibility(
+    M0=1, M1=0.1, interpolator=interpolator
+)
 
 # Time discretization
 dt = 1.0e-3
@@ -134,7 +113,7 @@ u_prev, theta_prev, p_prev = split(xiB_prev)
 
 
 # Initial condtions
-initialcondition_cross = chb.initialconditions.Cross(width = 0.3)
+initialcondition_cross = chb.initialconditions.Cross(width=0.3)
 initialcondition = chb.initialconditions.symmetrichalfnhalf
 xiCH.sub(0).interpolate(initialcondition)
 xiCH.sub(1).interpolate(lambda x: np.zeros((1, x.shape[1])))
@@ -146,29 +125,36 @@ xiB_n.sub(2).interpolate(lambda x: np.zeros((1, x.shape[1])))
 xiB_n.x.scatter_forward()
 u_n, theta_n, p_n = split(xiB_n)
 
+
 # Boundary conditions
 def boundary(x):
-    return np.logical_or(np.logical_or(np.isclose(x[0], 0.0), np.isclose(x[0], 1.0)),np.logical_or(np.isclose(x[1], 0.0), np.isclose(x[1], 1.0)))
+    return np.logical_or(
+        np.logical_or(np.isclose(x[0], 0.0), np.isclose(x[0], 1.0)),
+        np.logical_or(np.isclose(x[1], 0.0), np.isclose(x[1], 1.0)),
+    )
+
 
 def boundary_left(x):
     return np.isclose(x[0], 0.0)
 
+
 def boundary_right(x):
     return np.isclose(x[0], 1.0)
+
 
 V_u = Vb.sub(0)
 # V_p = Vb.sub(2)
 facets = mesh.locate_entities_boundary(msh, msh.topology.dim - 1, boundary)
-#facets_left = mesh.locate_entities_boundary(msh, msh.topology.dim -1, boundary_left)
-#facets_right = mesh.locate_entities_boundary(msh, msh.topology.dim -1, boundary_right)
+# facets_left = mesh.locate_entities_boundary(msh, msh.topology.dim -1, boundary_left)
+# facets_right = mesh.locate_entities_boundary(msh, msh.topology.dim -1, boundary_right)
 dofs_u = locate_dofs_topological(V_u, msh.topology.dim - 1, facets)
 # dofs_p = locate_dofs_topological(V_p, msh.topology.dim - 1, facets)
-#dofs_p_left = locate_dofs_topological(V_p, msh.topology.dim - 1, facets_left)
-#dofs_p_right = locate_dofs_topological(V_p, msh.topology.dim - 1, facets_right)
+# dofs_p_left = locate_dofs_topological(V_p, msh.topology.dim - 1, facets_left)
+# dofs_p_right = locate_dofs_topological(V_p, msh.topology.dim - 1, facets_right)
 
 u_bc, _, _ = Function(Vb).split()
-#u_bc, _, p_bc_left = Function(Vb).split()
-#_, _, p_bc_right = Function(Vb).split()
+# u_bc, _, p_bc_left = Function(Vb).split()
+# _, _, p_bc_right = Function(Vb).split()
 
 u_bc.interpolate(lambda x: np.zeros((2, x.shape[1])))
 bc_u = dirichletbc(u_bc, dofs_u)
@@ -176,11 +162,11 @@ bc_u = dirichletbc(u_bc, dofs_u)
 # p_bc.interpolate(lambda x: np.zeros((1, x.shape[1])))
 # bc_p = dirichletbc(p_bc, dofs_p)
 
-#p_bc_left.interpolate(lambda x: np.ones((1, x.shape[1])))
-#p_bc_right.interpolate(lambda x: np.zeros((1, x.shape[1])))
+# p_bc_left.interpolate(lambda x: np.ones((1, x.shape[1])))
+# p_bc_right.interpolate(lambda x: np.zeros((1, x.shape[1])))
 
-#bc_p_left = dirichletbc(p_bc_left, dofs_p_left)
-#bc_p_right = dirichletbc(p_bc_right, dofs_p_right)
+# bc_p_left = dirichletbc(p_bc_left, dofs_p_left)
+# bc_p_right = dirichletbc(p_bc_right, dofs_p_right)
 
 # Linear variational forms
 F_pf = (
@@ -190,34 +176,39 @@ F_pf = (
 F_mu = (
     inner(mu, eta_mu) * dx
     - gamma * ell * inner(grad(pf), grad(eta_mu)) * dx
-    - gamma / ell
-    * inner(
-        (
-            doublewell.cprime(pf) - doublewell.eprime(pf_old)
-        ),
-        eta_mu
-    )
+    - gamma
+    / ell
+    * inner((doublewell.cprime(pf) - doublewell.eprime(pf_old)), eta_mu)
     * dx
     - (
         inner(
-            0.5 *
-            inner(
-                stiffness_tensor.stress_prime(strain=sym(grad(u_old)) - swelling(pf_old), pf=pf_old),
-                sym(grad(u_old)) - swelling(pf_old)
+            0.5
+            * inner(
+                stiffness_tensor.stress_prime(
+                    strain=sym(grad(u_old)) - swelling(pf_old), pf=pf_old
+                ),
+                sym(grad(u_old)) - swelling(pf_old),
             )
             - inner(
-                stiffness_tensor.stress(strain=sym(grad(u_prev)) - swelling(pf), pf=pf_old),
-                swelling.prime()
+                stiffness_tensor.stress(
+                    strain=sym(grad(u_prev)) - swelling(pf), pf=pf_old
+                ),
+                swelling.prime(),
             ),
-            eta_mu
+            eta_mu,
         )
     )
     * dx
     - (
         inner(
-            0.5 * compressibility.prime(pf_old) * (theta_old - alpha(pf_old) * div(u_old))**2
-            - alpha.prime(pf) * compressibility(pf_old) * (theta_prev - alpha(pf) * div(u_prev)) * div(u_prev),
-            eta_mu
+            0.5
+            * compressibility.prime(pf_old)
+            * (theta_old - alpha(pf_old) * div(u_old)) ** 2
+            - alpha.prime(pf)
+            * compressibility(pf_old)
+            * (theta_prev - alpha(pf) * div(u_prev))
+            * div(u_prev),
+            eta_mu,
         )
         * dx
     )
@@ -226,21 +217,26 @@ F_mu = (
 F_u = (
     inner(
         stiffness_tensor.stress(strain=sym(grad(u)) - swelling(pf), pf=pf_old)
-        - alpha(pf) * compressibility(pf_old) * (theta - alpha(pf) * div(u)) * Identity(2),
-        sym(grad(eta_u))
+        - alpha(pf)
+        * compressibility(pf_old)
+        * (theta - alpha(pf) * div(u))
+        * Identity(2),
+        sym(grad(eta_u)),
     )
     * dx
 )
 
 F_theta = (
-    inner(theta - theta_old, eta_theta) * dx + dt * permeability * inner(grad(p), grad(eta_theta)) * dx
+    inner(theta - theta_old, eta_theta) * dx
+    + dt * permeability * inner(grad(p), grad(eta_theta)) * dx
 )
 
 F_p = (
-    inner(p, eta_p) * dx - inner(compressibility(pf_old) * (theta - alpha(pf) * div(u)), eta_p) * dx              
+    inner(p, eta_p) * dx
+    - inner(compressibility(pf_old) * (theta - alpha(pf) * div(u)), eta_p) * dx
 )
 
-Fch = F_pf + F_mu 
+Fch = F_pf + F_mu
 Fb = F_u + F_theta + F_p
 
 
@@ -249,48 +245,58 @@ problemCH = NonlinearProblem(Fch, xiCH, bcs=[])
 
 aB = lhs(Fb)
 lB = rhs(Fb)
-problemB = LinearProblem(aB, lB, bcs=[bc_u]) #bcs=[bc_u, bc_p_left, bc_p_right], bcs=[bc_u]
+problemB = LinearProblem(
+    aB, lB, bcs=[bc_u]
+)  # bcs=[bc_u, bc_p_left, bc_p_right], bcs=[bc_u]
 
 # Set up Newton solver
 solverCH = NewtonSolver(MPI.COMM_WORLD, problemCH)
 solverCH.max_it = 100
 solverCH.rtol = 1e-6
-#solver.convergence_criterion = "incremental"
+# solver.convergence_criterion = "incremental"
 
 # Pyvista plot
 # viz = chb.visualization.PyvistaVizualization(Vch.sub(0), xiCH.sub(0), 0.0)
-#vizP = chb.visualization.PyvistaVizualization(Vb.sub(2), xiB_n.sub(2), 0.0, "pressure")
+# vizP = chb.visualization.PyvistaVizualization(Vb.sub(2), xiB_n.sub(2), 0.0, "pressure")
 
 # Output file
 filenamepath = "../output/chb_splitting_ch_biot_semi_imp_"
-output_file_pf = XDMFFile(MPI.COMM_WORLD, filenamepath+f"{ell}ell_pf.xdmf", "w")
-output_file_p = XDMFFile(MPI.COMM_WORLD, filenamepath+f"{ell}ell_p.xdmf", "w")
+output_file_pf = XDMFFile(MPI.COMM_WORLD, filenamepath + f"{ell}ell_pf.xdmf", "w")
+output_file_p = XDMFFile(MPI.COMM_WORLD, filenamepath + f"{ell}ell_p.xdmf", "w")
 
 output_file_pf.write_mesh(msh)
 output_file_p.write_mesh(msh)
 
+
 # Energy
 def energy_i(pf, dx):
     return gamma * (1 / ell * doublewell(pf) + ell / 2 * inner(grad(pf), grad(pf))) * dx
-    
+
+
 def energy_e(pf, u, dx):
-    return 0.5 * inner(stiffness_tensor.stress(strain=sym(grad(u)) - swelling(pf), pf=pf), sym(grad(u)) - swelling(pf)) * dx
-    
+    return (
+        0.5
+        * inner(
+            stiffness_tensor.stress(strain=sym(grad(u)) - swelling(pf), pf=pf),
+            sym(grad(u)) - swelling(pf),
+        )
+        * dx
+    )
+
+
 def energy_f(pf, u, theta, dx):
-    return 0.5 * compressibility(pf) * (theta - alpha(pf) * div(u))**2 * dx
+    return 0.5 * compressibility(pf) * (theta - alpha(pf) * div(u)) ** 2 * dx
+
 
 def energyTotal(pf, u, theta, dx):
-    #energy_i = gamma * (1 / ell * doublewell(pf) + ell / 2 * inner(grad(pf), grad(pf))) * dx
-    #energy_e = 0.5 * inner(stiffness_tensor.stress(strain=sym(grad(u)) - swelling(pf), pf=pf), sym(grad(u)) - swelling(pf)) * dx
-    #energy_f = 0.5 * compressibility(pf) * (theta - alpha(pf) * div(u))**2 * dx
-    #return energy_i + energy_e + energy_f
     return energy_i(pf, dx) + energy_e(pf, u, dx) + energy_f(pf, u, theta, dx)
-    
+
+
 t_vec = []
 energy_vec = []
 energy_int_vec = []  # Interface energy
-energy_el_vec = []   # Elastic energy  
-energy_fl_vec = []   # Fluid energy
+energy_el_vec = []  # Elastic energy
+energy_fl_vec = []  # Fluid energy
 iterations = []
 times = []
 # Time stepping
@@ -314,37 +320,36 @@ for i in range(num_time_steps):
         xiCH_prev.x.scatter_forward()
         xiB_prev.x.array[:] = xiB_n.x.array
         xiB_prev.x.scatter_forward()
-    
+
         # Solve the non-linear problems
         nCH, convergedCH = solverCH.solve(xiCH)
         xiB_n = problemB.solve()
         xiB_n.x.scatter_forward()
         u_n, theta_n, p_n = xiB_n.split()
-        
+
         increment_split = chb.util.l2norm_3(pf - pf_prev, u_n - u_prev, p_n - p_prev)
         print(f"Increment norm at time step {i} splitting step {j}: {increment_split}")
-        
+
         if increment_split < tol_split:
-            break      
-        
-    tpost = time()-tpre
+            break
+
+    tpost = time() - tpre
     # Update the plot window
     # viz.update(xiCH.sub(0), t)
-    #vizP.update(xiB_n.sub(2), t)
-    
-    energy_total = energyTotal(pf, u_n, theta_n, dx = Measure("dx", domain=msh))        
+    # vizP.update(xiB_n.sub(2), t)
+
+    energy_total = energyTotal(pf, u_n, theta_n, dx=Measure("dx", domain=msh))
     energy = assemble_scalar(form(energy_total))
-    
+
     # Calculate individual energy components
-    energy_int_form = energy_i(pf, dx = Measure("dx", domain=msh))
-    energy_el_form = energy_e(pf, u_n, dx = Measure("dx", domain=msh))
-    energy_fl_form = energy_f(pf, u_n, theta_n, dx = Measure("dx", domain=msh))
-    
+    energy_int_form = energy_i(pf, dx=Measure("dx", domain=msh))
+    energy_el_form = energy_e(pf, u_n, dx=Measure("dx", domain=msh))
+    energy_fl_form = energy_f(pf, u_n, theta_n, dx=Measure("dx", domain=msh))
+
     energy_int = assemble_scalar(form(energy_int_form))
     energy_el = assemble_scalar(form(energy_el_form))
     energy_fl = assemble_scalar(form(energy_fl_form))
-    
-    
+
     t_vec.append(tpost)
     energy_vec.append(energy)
     energy_int_vec.append(energy_int)
@@ -361,33 +366,32 @@ for i in range(num_time_steps):
 
 
 # viz.final_plot(xiCH.sub(0))
-#vizP.final_plot(xiB_n.sub(2))
+# vizP.final_plot(xiB_n.sub(2))
 
 # Create log DataFrame and save to Excel
 log_data = {
-    'Time_Step': range(1, len(t_vec) + 1),  # Enumerate time steps starting from 1
-    'Iterations': iterations,
-    'Time': t_vec,
-    'Total_Energy': energy_vec,
-    'Interface_Energy': energy_int_vec,
-    'Elastic_Energy': energy_el_vec,
-    'Fluid_Energy': energy_fl_vec
+    "Time_Step": range(1, len(t_vec) + 1),  # Enumerate time steps starting from 1
+    "Iterations": iterations,
+    "Time": t_vec,
+    "Total_Energy": energy_vec,
+    "Interface_Energy": energy_int_vec,
+    "Elastic_Energy": energy_el_vec,
+    "Fluid_Energy": energy_fl_vec,
 }
 
 log_df = pandas.DataFrame(log_data)
 log_filenamepath = "../output/log/chb_splitting_ch_biot_semi_imp.xlsx"
 
-# Create directory if it doesn't exist
-import os
+
 os.makedirs(os.path.dirname(log_filenamepath), exist_ok=True)
 
 try:
     # Try to save as Excel file (requires openpyxl)
-    log_df.to_excel(log_filenamepath, index=False, sheet_name='Simulation_Log')
+    log_df.to_excel(log_filenamepath, index=False, sheet_name="Simulation_Log")
     print(f"Log data saved to Excel file: {log_filenamepath}")
 except ImportError:
     # Fallback to CSV if openpyxl is not available
-    csv_path = log_filenamepath.replace('.xlsx', '.csv')
+    csv_path = log_filenamepath.replace(".xlsx", ".csv")
     log_df.to_csv(csv_path, index=False)
     print(f"Excel writer not available, log data saved to CSV: {csv_path}")
     print("Install openpyxl with: pip install openpyxl")
@@ -456,8 +460,8 @@ except ImportError:
 
 #     plt.show()
 
-#plot_along_line(xiCH.sub(0), msh=msh, filename=f"../output/line_data_{ell}ell.npy")
-#plot_along_line(xiB_n.sub(2), msh=msh, filename=f"../output/line_data_{ell}ell.npy")
+# plot_along_line(xiCH.sub(0), msh=msh, filename=f"../output/line_data_{ell}ell.npy")
+# plot_along_line(xiB_n.sub(2), msh=msh, filename=f"../output/line_data_{ell}ell.npy")
 
 output_file_pf.close()
 output_file_p.close()

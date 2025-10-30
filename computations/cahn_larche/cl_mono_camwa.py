@@ -1,51 +1,13 @@
-import chb
-
 import numpy as np
-
-from mpi4py import MPI
-
-from petsc4py import PETSc
-
 from basix.ufl import element, mixed_element
-
-import matplotlib.pyplot as plt
-
 from dolfinx import mesh
+from dolfinx.fem import Function, dirichletbc, functionspace, locate_dofs_topological
+from dolfinx.fem.petsc import LinearProblem
 from dolfinx.io import XDMFFile
-from dolfinx.fem import (
-    functionspace,
-    Function,
-    assemble_scalar,
-    form,
-    locate_dofs_topological,
-    dirichletbc,
-    Expression,
-)
-from dolfinx.fem.petsc import (
-    LinearProblem,
-    assemble_matrix,
-    assemble_vector,
-    create_matrix,
-    create_vector,
-    apply_lifting,
-    set_bc,
-)
+from mpi4py import MPI
+from ufl import TestFunction, TrialFunction, dx, grad, inner, lhs, rhs, split, sym
 
-from ufl import (
-    Measure,
-    TestFunction,
-    TrialFunction,
-    split,
-    Constant,
-    Identity,
-    inner,
-    grad,
-    sym,
-    dx,
-    rhs,
-    lhs,
-)
-
+import chb
 
 # Spatial discretization
 nx = ny = 256
@@ -63,7 +25,7 @@ doublewell = chb.energies.DoubleWellPotential()
 stiffness_tensor = chb.elasticity.IsotropicStiffnessTensor(
     lame_lambda_0=20, lame_lambda_1=0.1, lame_mu_0=50, lame_mu_1=1
 )
-swelling = chb.elasticity.Swelling(swelling_parameter=0.25, pf_ref = 0)
+swelling = chb.elasticity.Swelling(swelling_parameter=0.25, pf_ref=0)
 
 # Time discretization
 dt = 1.0e-3
@@ -216,7 +178,11 @@ for i in range(num_time_steps):
 
         increment = chb.util.l2norm(pf_n - pf_prev)
         print(f"Norm at time step {i} iteration {j}: {increment}")
-        # print(f"Norms for pf, mu, u are: {chb.util.l2norm(pf_n-pf_prev)} {chb.util.l2norm(mu_n-mu_prev)}, {chb.util.l2norm(u_n-u_prev)}")
+        # print(
+        #     f"Norms for pf, mu, u are: {chb.util.l2norm(pf_n-pf_prev)} "
+        #     f"{chb.util.l2norm(mu_n-mu_prev)}, "
+        #     f"{chb.util.l2norm(u_n-u_prev)}"
+        # )
         viz.update(xi_n.sub(0), t)
         if increment < tol:
             break
@@ -229,7 +195,6 @@ for i in range(num_time_steps):
 
 
 viz.final_plot(xi_n.sub(0))
-
 
 
 output_file_pf.close()

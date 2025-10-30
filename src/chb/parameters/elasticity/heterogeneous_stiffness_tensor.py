@@ -2,12 +2,9 @@ from typing import Optional
 
 import dolfinx as dfx
 import numpy as np
-from ufl import indices, as_tensor
-
+from ufl import as_tensor, indices
 
 import chb
-
-"""Heterogeneous and anisotropic general stiffness tensor."""
 
 
 class HeterogeneousStiffnessTensor:
@@ -18,23 +15,25 @@ class HeterogeneousStiffnessTensor:
         stiffness0: Optional[np.ndarray] = None,
         stiffness1: Optional[np.ndarray] = None,
         dim: int = 2,
-        interpolator: chb.interpolate.StandardInterpolator = chb.interpolate.StandardInterpolator(),
+        interpolator: chb.interpolate.StandardInterpolator = (
+            chb.interpolate.StandardInterpolator()
+        ),
         voigt: bool = False,
     ) -> None:
-        """Initialize the heterogeneous and anisotropic general stiffness tensor.
+        """
+        Initialize the heterogeneous and anisotropic stiffness tensor.
 
         Args:
-            stiffness0 (np.ndarray, optional): Stiffness tensor for phasefield = 0. Defaults to None.
-            stiffness1 (np.ndarray, optional): Stiffness tensor for phasefield = 1. Defaults to None.
+            stiffness0 (np.ndarray, optional): Stiffness tensor for
+                phasefield = 0. Defaults to None.
+            stiffness1 (np.ndarray, optional): Stiffness tensor for
+                phasefield = 1. Defaults to None.
             dim (int, optional): Dimension. Defaults to 2.
-            interpolator (chb.StandardInterpolator, optional): Interpolator for the phasefield. Defaults to chb.StandardInterpolator().
-            voigt (bool, optional): input is given in Voigt notation. Defaults to False.
-
-        Attributes:
-            stiffness0 (df.Constant): Stiffness tensor for phasefield = 0
-            stiffness1 (df.Constant): Stiffness tensor for phasefield = 1
-            dim (int): Dimension. As of now, the only acceptable input is 2.
-            interpolator (chb.StandardInterpolator): Interpolator for the phasefield
+            interpolator (chb.StandardInterpolator, optional):
+                Interpolator for the phasefield.
+                Defaults to chb.StandardInterpolator().
+            voigt (bool, optional): input is given in Voigt notation.
+                Defaults to False.
         """
 
         # Define interpolator
@@ -66,9 +65,9 @@ class HeterogeneousStiffnessTensor:
             self.stiffness0np[1, 0, 1, 0] = 100
             self.stiffness0np[1, 0, 0, 1] = 100
 
-            #print(self.stiffness0np.shape)
+            # print(self.stiffness0np.shape)
             self.stiffness0 = as_tensor(self.stiffness0np)
-            #print(self.stiffness0.ufl_shape)
+            # print(self.stiffness0.ufl_shape)
 
         elif voigt:
             self.stiffness0np = np.zeros((dim, dim, dim, dim))
@@ -123,7 +122,6 @@ class HeterogeneousStiffnessTensor:
 
             self.stiffness1 = as_tensor(self.stiffness1np)
 
-
         elif voigt:
             self.stiffness1np = np.zeros((dim, dim, dim, dim))
 
@@ -153,62 +151,98 @@ class HeterogeneousStiffnessTensor:
             self.stiffness1 = as_tensor(self.stiffness1)
 
     def manual(self, pf):
-        """Evaluate the heterogeneous and anisotropic general stiffness tensor. For use in Sympy.
+        """
+        Evaluate the heterogeneous stiffness tensor. For Sympy use.
 
         Args:
             pf (sympy.Symbol): Phasefield
 
         Returns:
-            sympy.Symbol: Heterogeneous and anisotropic general stiffness tensor
+            sympy.Symbol: Heterogeneous and anisotropic stiffness
+                tensor
         """
-        return self.stiffness0 + self.interpolator(pf) * (self.stiffness1 - self.stiffness0)
+        return self.stiffness0 + self.interpolator(pf) * (
+            self.stiffness1 - self.stiffness0
+        )
 
     def manual_prime(self, pf):
-        """Evaluate the derivative of the heterogeneous and anisotropic general stiffness tensor. For use in Sympy.
+        """
+        Evaluate derivative of heterogeneous stiffness tensor. For Sympy.
 
         Args:
             pf (sympy.Symbol): Phasefield
 
         Returns:
-            sympy.Symbol: Derivative of the heterogeneous and anisotropic general stiffness tensor
+            sympy.Symbol: Derivative of the heterogeneous and
+                anisotropic stiffness tensor
         """
         return self.interpolator.prime(pf) * (self.stiffness1 - self.stiffness0)
 
-    def stress(self, strain: dfx.fem.Function, pf: dfx.fem.Function) -> dfx.fem.Function:
-        """Evaluate the heterogeneous and anisotropic general stiffness tensor.
+    def stress(
+        self, strain: dfx.fem.Function, pf: dfx.fem.Function
+    ) -> dfx.fem.Function:
+        """
+        Evaluate the heterogeneous and anisotropic stiffness tensor.
 
         Args:
             strain (df.Function): Strain
             pf (df.Function): Phasefield
 
         Returns:
-            df.Function: Heterogeneous and anisotropic general stiffness tensor
+            df.Function: Heterogeneous and anisotropic stiffness
+                tensor
         """
-        i, j, k, l = indices(4)
-        return as_tensor((self.stiffness0[i,j,k,l] + self.interpolator(pf) * (self.stiffness1[i,j,k,l] - self.stiffness0[i,j,k,l])) * strain[k,l], (i,j))
+        i, j, k, m = indices(4)
+        return as_tensor(
+            (
+                self.stiffness0[i, j, k, m]
+                + self.interpolator(pf)
+                * (self.stiffness1[i, j, k, m] - self.stiffness0[i, j, k, m])
+            )
+            * strain[k, m],
+            (i, j),
+        )
 
-    def stress_prime(self, strain: dfx.fem.Function, pf: dfx.fem.Function) -> dfx.fem.Function:
-        """Evaluate the derivative of the heterogeneous and anisotropic general stiffness tensor.
+    def stress_prime(
+        self, strain: dfx.fem.Function, pf: dfx.fem.Function
+    ) -> dfx.fem.Function:
+        """
+        Evaluate derivative of heterogeneous stiffness tensor.
 
         Args:
             strain (df.Function): Strain
             pf (df.Function): Phasefield
 
         Returns:
-            df.Function: Derivative of the heterogeneous and anisotropic general stiffness tensor
+            df.Function: Derivative of the heterogeneous and
+                anisotropic stiffness tensor
         """
-        i, j, k, l = indices(4)
-        return as_tensor(self.interpolator.prime(pf) * (self.stiffness1[i,j,k,l] - self.stiffness0[i,j,k,l]) * strain[k,l], (i,j))
+        i, j, k, m = indices(4)
+        return as_tensor(
+            self.interpolator.prime(pf)
+            * (self.stiffness1[i, j, k, m] - self.stiffness0[i, j, k, m])
+            * strain[k, m],
+            (i, j),
+        )
 
-    def stress_doubleprime(self, strain: dfx.fem.Function, pf: dfx.fem.Function) -> dfx.fem.Function:
-        """Evaluate the second derivative of the heterogeneous and anisotropic general stiffness tensor.
+    def stress_doubleprime(
+        self, strain: dfx.fem.Function, pf: dfx.fem.Function
+    ) -> dfx.fem.Function:
+        """
+        Evaluate second derivative of heterogeneous stiffness tensor.
 
         Args:
             strain (df.Function): Strain
             pf (df.Function): Phasefield
 
         Returns:
-            df.Function: Second derivative of the heterogeneous and anisotropic general stiffness tensor
+            df.Function: Second derivative of the heterogeneous and
+                anisotropic stiffness tensor
         """
-        i, j, k, l = indices(4)
-        return as_tensor(self.interpolator.doubleprime(pf) * (self.stiffness1[i,j,k,l] - self.stiffness0[i,j,k,l]) * strain[k,l], (i,j))
+        i, j, k, m = indices(4)
+        return as_tensor(
+            self.interpolator.doubleprime(pf)
+            * (self.stiffness1[i, j, k, m] - self.stiffness0[i, j, k, m])
+            * strain[k, m],
+            (i, j),
+        )

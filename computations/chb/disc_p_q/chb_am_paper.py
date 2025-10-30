@@ -1,55 +1,27 @@
-import chb
-
-import numpy as np
-
-from mpi4py import MPI
-
-from petsc4py import PETSc
-
-from basix.ufl import element, mixed_element
-
 import matplotlib.pyplot as plt
-
+import numpy as np
+from basix.ufl import element, mixed_element
 from dolfinx import mesh
-from dolfinx.io import XDMFFile
-from dolfinx.fem import (
-    functionspace,
-    Function,
-    Expression,
-    assemble_scalar,
-    form,
-    locate_dofs_topological,
-    dirichletbc,
-)
-
+from dolfinx.fem import Function, dirichletbc, functionspace, locate_dofs_topological
+from dolfinx.fem.petsc import LinearProblem
 from dolfinx.geometry import bb_tree, compute_colliding_cells, compute_collisions_points
-
-
-from dolfinx.fem.petsc import (
-    LinearProblem,
-    assemble_matrix,
-    assemble_vector,
-    create_matrix,
-    create_vector,
-    apply_lifting,
-    set_bc,
-)
-
+from dolfinx.io import XDMFFile
+from mpi4py import MPI
 from ufl import (
-    Measure,
+    Identity,
     TestFunction,
     TrialFunction,
-    split,
-    Constant,
-    Identity,
-    inner,
-    grad,
-    sym,
     dx,
-    rhs,
+    grad,
+    inner,
     lhs,
     nabla_div,
+    rhs,
+    split,
+    sym,
 )
+
+import chb
 
 # Spatial discretization
 nx = ny = 32
@@ -100,17 +72,17 @@ V_e = functionspace(msh, P1U)
 V_f = functionspace(msh, ME_f)
 
 # Test and trial functions
-#ch
+# ch
 xi_ch = TrialFunction(V_ch)
 eta_ch = TestFunction(V_ch)
 pf, mu = split(xi_ch)
 eta_pf, eta_mu = split(eta_ch)
 
-#e
+# e
 u = TrialFunction(V_e)
 eta_u = TestFunction(V_e)
 
-#f
+# f
 xi_f = TrialFunction(V_f)
 eta_f = TestFunction(V_f)
 p, q = split(xi_f)
@@ -118,7 +90,7 @@ eta_p, eta_q = split(eta_f)
 
 
 # Iteration functions
-#CH
+# CH
 xi_ch_n = Function(V_ch)
 
 xi_ch_prev = Function(V_ch)
@@ -145,7 +117,7 @@ xi_f_old = Function(V_f)
 p_old, q_old = xi_f_old.split()
 
 # Initial condtions
-initialcondition_cross = chb.initialconditions.Cross(width = 0.3)
+initialcondition_cross = chb.initialconditions.Cross(width=0.3)
 initialcondition = chb.initialconditions.halfnhalf
 xi_ch_n.sub(0).interpolate(initialcondition)
 # xi_n.sub(1).interpolate(lambda x: np.zeros((1, x.shape[1])))
@@ -159,19 +131,25 @@ pf_n, mu_n = xi_ch_n.split()
 
 # Boundary conditions
 def boundary(x):
-    return np.logical_or(np.logical_or(np.isclose(x[0], 0.0), np.isclose(x[0], 1.0)),np.logical_or(np.isclose(x[1], 0.0), np.isclose(x[1], 1.0)))
+    return np.logical_or(
+        np.logical_or(np.isclose(x[0], 0.0), np.isclose(x[0], 1.0)),
+        np.logical_or(np.isclose(x[1], 0.0), np.isclose(x[1], 1.0)),
+    )
+
 
 def boundary_left(x):
     return np.isclose(x[0], 0.0)
 
+
 def boundary_right(x):
     return np.isclose(x[0], 1.0)
+
 
 V_u = V_e
 V_p = V_f.sub(0)
 facets = mesh.locate_entities_boundary(msh, msh.topology.dim - 1, boundary)
-facets_left = mesh.locate_entities_boundary(msh, msh.topology.dim -1, boundary_left)
-facets_right = mesh.locate_entities_boundary(msh, msh.topology.dim -1, boundary_right)
+facets_left = mesh.locate_entities_boundary(msh, msh.topology.dim - 1, boundary_left)
+facets_right = mesh.locate_entities_boundary(msh, msh.topology.dim - 1, boundary_right)
 dofs_u = locate_dofs_topological(V_u, msh.topology.dim - 1, facets)
 dofs_p_left = locate_dofs_topological(V_p, msh.topology.dim - 1, facets_left)
 dofs_p_right = locate_dofs_topological(V_p, msh.topology.dim - 1, facets_right)
@@ -182,7 +160,7 @@ p_bc_left, _ = Function(V_f).split()
 p_bc_right, _ = Function(V_f).split()
 u_bc.interpolate(lambda x: np.zeros((2, x.shape[1])))
 bc_u = dirichletbc(u_bc, dofs_u)
- 
+
 p_bc_left.interpolate(lambda x: np.ones((1, x.shape[1])))
 p_bc_right.interpolate(lambda x: np.zeros((1, x.shape[1])))
 
@@ -275,7 +253,7 @@ problem = LinearProblem(a, L, bcs=[bc_u, bc_p_left, bc_p_right])
 
 
 # Pyvista plot
-viz = chb.visualization.PyvistaVizualization(V.sub(0), xi_n.sub(0), 0.0)
+# viz = chb.visualization.PyvistaVizualization(V_ch.sub(0), xi_ch_n.sub(0), 0.0)
 
 # Output file
 output_file_pf = XDMFFile(MPI.COMM_WORLD, f"../output/chb_{ell}ell_pf.xdmf", "w")
@@ -291,42 +269,57 @@ t = 0.0
 
 for i in range(num_time_steps):
     # Set old time-step functions
-    xi_old.x.array[:] = xi_n.x.array
-    xi_old.x.scatter_forward()
-    pf_old, mu_old, u_old, p_old, q_old = xi_old.split()
+    xi_ch_old.x.array[:] = xi_ch_n.x.array
+    xi_ch_old.x.scatter_forward()
+    pf_old, mu_old = xi_ch_old.split()
+
+    u_old.x.array[:] = xi_e_n.x.array
+    u_old.x.scatter_forward()
+
+    xi_f_old.x.array[:] = xi_f_n.x.array
+    xi_f_old.x.scatter_forward()
+    p_old, q_old = xi_f_old.split()
+
     # Update current time
     t += dt
 
     for j in range(max_iter):
-        xi_prev.x.array[:] = xi_n.x.array
-        xi_prev.x.scatter_forward()
-        pf_prev, mu_prev, u_prev, p_old, q_old = (
-            xi_prev.split()
-        )  # This seem only to be necessary for the computation of the L2-norm
+        xi_ch_prev.x.array[:] = xi_ch_n.x.array
+        xi_ch_prev.x.scatter_forward()
+        pf_prev, mu_prev = xi_ch_prev.split()
+
+        u_prev.x.array[:] = xi_e_n.x.array
+        u_prev.x.scatter_forward()
+
+        xi_f_prev.x.array[:] = xi_f_n.x.array
+        xi_f_prev.x.scatter_forward()
+        p_prev, q_prev = xi_f_prev.split()
 
         # Define the problem
-        xi_n = problem.solve()
-        xi_n.x.scatter_forward()
-        pf_n, mu_n, u_n, p_old, q_old = (
-            xi_n.split()
-        )  # This seem only to be necessary for the computation of the L2-norm
+        xi_result = problem.solve()
+        xi_result.x.scatter_forward()
 
         increment = chb.util.l2norm(pf_n - pf_prev)
         print(f"Norm at time step {i} iteration {j}: {increment}")
-        # print(f"Norms for pf, mu, u are: {chb.util.l2norm(pf_n-pf_prev)} {chb.util.l2norm(mu_n-mu_prev)}, {chb.util.l2norm(u_n-u_prev)}")
-        viz.update(xi_n.sub(0), t)
+        # print(
+        #     f"Norms for pf, mu, u are: {chb.util.l2norm(pf_n-pf_prev)} "
+        #     f"{chb.util.l2norm(mu_n-mu_prev)}, "
+        #     f"{chb.util.l2norm(u_n-u_prev)}"
+        # )
+        # viz.update(xi_ch_n.sub(0), t)
         if increment < tol:
             break
 
         # Update the plot window
 
     # Output
-    pf_out, _, _, p_out, _ = xi_n.split()
+    pf_out, _ = xi_ch_n.split()
+    p_out, _ = xi_f_n.split()
     output_file_pf.write_function(pf_out, t)
     output_file_p.write_function(p_out, t)
 
 
-viz.final_plot(xi_n.sub(0))
+# viz.final_plot(xi_ch_n.sub(0))
 
 
 def plot_along_line(u, msh, y=0.5, filename="line_data.npy"):
@@ -352,6 +345,7 @@ def plot_along_line(u, msh, y=0.5, filename="line_data.npy"):
     plt.plot(x_coords, values, label=f"Solution at y={0.5}")
 
     plt.show()
+
 
 plot_along_line(pf_n, msh=msh, filename=f"../output/line_data_{ell}ell.npy")
 

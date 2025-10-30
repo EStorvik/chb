@@ -1,24 +1,24 @@
-
-from dolfinx import plot
+"""PyVista-based visualization for FEniCSx solutions."""
 
 import pyvista as pv
 import pyvistaqt as pvqt
-
+from dolfinx import plot
 
 if pv.OFF_SCREEN:
     pv.start_xvfb(wait=0.5)
 
+
 class PyvistaVizualization:
 
-
-    def __init__(self, V, xi, t0, name = "phase-field") -> None:
+    def __init__(self, V, xi, t0, name="phase-field") -> None:
         """
-        Initialize the visualization object
+        Initialize the visualization object.
 
         Args:
-            V (FunctionSpace): Function space. Provide the function space of the solution that you want to 
-                                plot. F.ex. use .subs(0) to get the function space of the first component 
-                                of the solution.
+            V (FunctionSpace): Function space. Provide the function
+                space of the solution that you want to plot. F.ex. use
+                .subs(0) to get the function space of the first
+                component of the solution.
             xi (Function): The solution to visualize
             t0 (float): The initial time
             name (str): The name of the scalar field to plot
@@ -38,10 +38,9 @@ class PyvistaVizualization:
         self.p.view_xy(True)
         self.p.add_text(f"time: {t0}", font_size=12, name="timelabel")
 
-
     def update(self, xi, t):
         """
-        Update the visualization with the new solution xi at time t
+        Update the visualization with the new solution xi at time t.
 
         Args:
             xi (Function): The new solution
@@ -50,17 +49,14 @@ class PyvistaVizualization:
         self.p.add_text(f"time: {t:.2e}", font_size=12, name="timelabel")
         self.grid.point_data[self.name] = xi.x.array[self.dofs].real
         self.p.app.processEvents()
-    
 
-
-# Update ghost entries and plot
+    # Update ghost entries and plot
     def final_plot(self, xi):
         """
-        Update the visualization with the new solution xi at time t
+        Update the visualization with the final solution.
 
         Args:
-            xi (Function): The new solution
-            t (float): The new time
+            xi (Function): The final solution
         """
 
         xi.x.scatter_forward()
@@ -68,5 +64,5 @@ class PyvistaVizualization:
 
         screenshot = None
         if pv.OFF_SCREEN:
-            screenshot = {self.name}+".png"
+            screenshot = self.name + ".png"
         pv.plot(self.grid, show_edges=True, screenshot=screenshot)

@@ -1,55 +1,27 @@
-import chb
-
-import numpy as np
-
-from mpi4py import MPI
-
-from petsc4py import PETSc
-
-from basix.ufl import element, mixed_element
-
 import matplotlib.pyplot as plt
-
+import numpy as np
+from basix.ufl import element, mixed_element
 from dolfinx import mesh
-from dolfinx.io import XDMFFile
-from dolfinx.fem import (
-    functionspace,
-    Function,
-    Expression,
-    assemble_scalar,
-    form,
-    locate_dofs_topological,
-    dirichletbc,
-)
-
+from dolfinx.fem import Function, dirichletbc, functionspace, locate_dofs_topological
+from dolfinx.fem.petsc import LinearProblem
 from dolfinx.geometry import bb_tree, compute_colliding_cells, compute_collisions_points
-
-
-from dolfinx.fem.petsc import (
-    LinearProblem,
-    assemble_matrix,
-    assemble_vector,
-    create_matrix,
-    create_vector,
-    apply_lifting,
-    set_bc,
-)
-
+from dolfinx.io import XDMFFile
+from mpi4py import MPI
 from ufl import (
-    Measure,
+    Identity,
     TestFunction,
     TrialFunction,
-    split,
-    Constant,
-    Identity,
-    inner,
-    grad,
-    sym,
     dx,
-    rhs,
+    grad,
+    inner,
     lhs,
     nabla_div,
+    rhs,
+    split,
+    sym,
 )
+
+import chb
 
 # Spatial discretization
 nx = ny = 32
@@ -114,7 +86,7 @@ pf_old, mu_old, u_old, p_old, q_old = xi_old.split()
 
 
 # Initial condtions
-initialcondition_cross = chb.initialconditions.Cross(width = 0.3)
+initialcondition_cross = chb.initialconditions.Cross(width=0.3)
 initialcondition = chb.initialconditions.halfnhalf
 xi_n.sub(0).interpolate(initialcondition)
 xi_n.sub(1).interpolate(lambda x: np.zeros((1, x.shape[1])))
@@ -128,19 +100,25 @@ pf_n, mu_n, u_n, p_n, q_n = xi_n.split()
 
 # Boundary conditions
 def boundary(x):
-    return np.logical_or(np.logical_or(np.isclose(x[0], 0.0), np.isclose(x[0], 1.0)),np.logical_or(np.isclose(x[1], 0.0), np.isclose(x[1], 1.0)))
+    return np.logical_or(
+        np.logical_or(np.isclose(x[0], 0.0), np.isclose(x[0], 1.0)),
+        np.logical_or(np.isclose(x[1], 0.0), np.isclose(x[1], 1.0)),
+    )
+
 
 def boundary_left(x):
     return np.isclose(x[0], 0.0)
 
+
 def boundary_right(x):
     return np.isclose(x[0], 1.0)
+
 
 V_u = V.sub(2)
 V_p = V.sub(3)
 facets = mesh.locate_entities_boundary(msh, msh.topology.dim - 1, boundary)
-facets_left = mesh.locate_entities_boundary(msh, msh.topology.dim -1, boundary_left)
-facets_right = mesh.locate_entities_boundary(msh, msh.topology.dim -1, boundary_right)
+facets_left = mesh.locate_entities_boundary(msh, msh.topology.dim - 1, boundary_left)
+facets_right = mesh.locate_entities_boundary(msh, msh.topology.dim - 1, boundary_right)
 dofs_u = locate_dofs_topological(V_u, msh.topology.dim - 1, facets)
 dofs_p_left = locate_dofs_topological(V_p, msh.topology.dim - 1, facets_left)
 dofs_p_right = locate_dofs_topological(V_p, msh.topology.dim - 1, facets_right)
@@ -281,7 +259,6 @@ for i in range(num_time_steps):
 
         increment = chb.util.l2norm(pf_n - pf_prev)
         print(f"Norm at time step {i} iteration {j}: {increment}")
-        # print(f"Norms for pf, mu, u are: {chb.util.l2norm(pf_n-pf_prev)} {chb.util.l2norm(mu_n-mu_prev)}, {chb.util.l2norm(u_n-u_prev)}")
         viz.update(xi_n.sub(0), t)
         if increment < tol:
             break
@@ -320,6 +297,7 @@ def plot_along_line(u, msh, y=0.5, filename="line_data.npy"):
     plt.plot(x_coords, values, label=f"Solution at y={0.5}")
 
     plt.show()
+
 
 plot_along_line(pf_n, msh=msh, filename=f"../output/line_data_{ell}ell.npy")
 

@@ -1,10 +1,15 @@
 """Classic double well potential with cutoff."""
 
-from dolfinx.fem import Function
 import ufl
+from dolfinx.fem import Function
+
 
 class DoubleWellPotential_cutoff:
-    """Classic double well potential Psi = pf^2 (1 - pf)^2 with cutoff (for the convex part)."""
+    """
+    Classic double well potential with cutoff (for the convex part).
+
+    Psi = pf^2 (1 - pf)^2.
+    """
 
     def __init__(self, scaling: float = 1.0, beta: float = 1.0) -> None:
         """Initialize the double well potential.
@@ -30,88 +35,121 @@ class DoubleWellPotential_cutoff:
             Function: Double well potential with cutoff
         """
         return ufl.conditional(
-            ufl.classes.OrCondition(ufl.le(pf, - self.beta + 0.5),ufl.ge(pf, self.beta + 0.5)), 
-            self.scaling * (2 * (self.beta ** 2 - 0.25) * (pf - 0.5) ** 2 - (self.beta ** 4 - 0.0625)), 
-            self.scaling * pf**2 * (1 - pf) ** 2
+            ufl.classes.OrCondition(
+                ufl.le(pf, -self.beta + 0.5), ufl.ge(pf, self.beta + 0.5)
+            ),
+            self.scaling
+            * (2 * (self.beta**2 - 0.25) * (pf - 0.5) ** 2 - (self.beta**4 - 0.0625)),
+            self.scaling * pf**2 * (1 - pf) ** 2,
         )
 
     def prime(self, pf: Function) -> Function:
-        """Evaluate the derivative of the double well potential with cutoff.
+        """
+        Evaluate derivative of double well potential with cutoff.
 
         Args:
             pf (Function): Phasefield
 
         Returns:
-            Function: Derivative of the double well potential with cutoff
+            Function: Derivative of the double well potential with
+                cutoff
         """
         return ufl.conditional(
-            ufl.classes.OrCondition(ufl.le(pf, - self.beta + 0.5),ufl.ge(pf, self.beta + 0.5)), 
-            self.scaling * 4 * (self.beta ** 2 - 0.25) * (pf - 0.5), 
-            self.scaling * 2 * pf * (1 - pf) * (1 - 2 * pf)
+            ufl.classes.OrCondition(
+                ufl.le(pf, -self.beta + 0.5), ufl.ge(pf, self.beta + 0.5)
+            ),
+            self.scaling * 4 * (self.beta**2 - 0.25) * (pf - 0.5),
+            self.scaling * 2 * pf * (1 - pf) * (1 - 2 * pf),
         )
 
     def doubleprime(self, pf: Function) -> Function:
-        """Evaluate the second derivative of the double well potential with cutoff.
+        """
+        Evaluate 2nd derivative of double well potential with cutoff.
 
         Args:
             pf (Function): Phasefield
 
         Returns:
-            Function: Second derivative of the double well potential with cutoff
+            Function: Second derivative of the double well potential
+                with cutoff
         """
         return ufl.conditional(
-            ufl.classes.OrCondition(ufl.le(pf, - self.beta + 0.5),ufl.ge(pf, self.beta + 0.5)), 
-            self.scaling * 4 * (self.beta ** 2 - 0.25), 
-            self.scaling * 2 * (1 - 6 * pf + 6 * pf**2)
+            ufl.classes.OrCondition(
+                ufl.le(pf, -self.beta + 0.5), ufl.ge(pf, self.beta + 0.5)
+            ),
+            self.scaling * 4 * (self.beta**2 - 0.25),
+            self.scaling * 2 * (1 - 6 * pf + 6 * pf**2),
         )
 
     def c(self, pf: Function) -> Function:
-        """Evaluate the convex part of the double well potential Psi_c = (pf-0.5)^4+0.0625 with cutoff.
+        """
+        Evaluate convex part of double well potential with cutoff.
+
+        Psi_c = (pf-0.5)^4+0.0625.
 
         args:
             pf (Function): Phasefield
 
         returns:
-            Function: Convex part of the double well potential with cutoff
+            Function: Convex part of the double well potential with
+                cutoff
         """
         return ufl.conditional(
-            ufl.classes.OrCondition(ufl.le(pf, - self.beta + 0.5),ufl.ge(pf, self.beta + 0.5)), 
-            self.scaling * (2 * self.beta ** 2 * (pf - 0.5) ** 2 - (self.beta ** 4 - 0.0625)), 
-            self.scaling * ((pf - 0.5) ** 4 + 0.0625)
+            ufl.classes.OrCondition(
+                ufl.le(pf, -self.beta + 0.5), ufl.ge(pf, self.beta + 0.5)
+            ),
+            self.scaling
+            * (2 * self.beta**2 * (pf - 0.5) ** 2 - (self.beta**4 - 0.0625)),
+            self.scaling * ((pf - 0.5) ** 4 + 0.0625),
         )
 
     def cprime(self, pf: Function) -> Function:
-        """Evaluate the derivative of the convex part of the double well potential Psi_c' = 4(pf-0.5)^3 with cutoff (Lipschitz continuous).
+        """
+        Evaluate derivative of convex part with cutoff (Lipschitz).
+
+        Psi_c' = 4(pf-0.5)^3.
 
         Args:
             pf (Function): Phasefield
 
         Returns:
-            Function: Derivative of the convex part of the double well potential with cutoff
+            Function: Derivative of the convex part of the double well
+                potential with cutoff
         """
         return ufl.conditional(
-            ufl.classes.OrCondition(ufl.le(pf, - self.beta + 0.5),ufl.ge(pf, self.beta + 0.5)), 
-            self.scaling * 4 * self.beta ** 2 * (pf - 0.5), 
-            self.scaling * 4 * (pf - 0.5) ** 3
+            ufl.classes.OrCondition(
+                ufl.le(pf, -self.beta + 0.5), ufl.ge(pf, self.beta + 0.5)
+            ),
+            self.scaling * 4 * self.beta**2 * (pf - 0.5),
+            self.scaling * 4 * (pf - 0.5) ** 3,
         )
-        
+
     def cdoubleprime(self, pf: Function) -> Function:
-        """Evaluate the second derivative of the convex part of the double well potential Psi_c'' = 12(pf-0.5)^2 with cutoff.
+        """
+        Evaluate 2nd derivative of convex part with cutoff.
+
+        Psi_c'' = 12(pf-0.5)^2.
 
         Args:
             pf (Function): Phasefield
 
         Returns:
-            Function: Second derivative of the convex part of the double well potential with cutoff
+            Function: Second derivative of the convex part of the
+                double well potential with cutoff
         """
         return ufl.conditional(
-            ufl.classes.OrCondition(ufl.le(pf, - self.beta + 0.5),ufl.ge(pf, self.beta + 0.5)), 
-            self.scaling * 4 * self.beta ** 2, 
-            self.scaling * 12 * (pf - 0.5) ** 2
+            ufl.classes.OrCondition(
+                ufl.le(pf, -self.beta + 0.5), ufl.ge(pf, self.beta + 0.5)
+            ),
+            self.scaling * 4 * self.beta**2,
+            self.scaling * 12 * (pf - 0.5) ** 2,
         )
 
     def e(self, pf: Function) -> Function:
-        """Evaluate the expansive part of the double well potential. Psi_e = 0.5(pf-0.5)^2.
+        """
+        Evaluate expansive part of double well potential.
+
+        Psi_e = 0.5(pf-0.5)^2.
 
         Args:
             pf (Function): Phasefield
@@ -122,31 +160,45 @@ class DoubleWellPotential_cutoff:
         return self.scaling * 0.5 * (pf - 0.5) ** 2
 
     def eprime(self, pf: Function) -> Function:
-        """Evaluate the derivative of the expansive part of the double well potential. Psi_e' = (pf-0.5).
+        """
+        Evaluate derivative of expansive part of double well.
+
+        Psi_e' = (pf-0.5).
 
         Args:
             pf (Function): Phasefield
 
         Returns:
-            Function: Derivative of the expansive part of the double well potential
+            Function: Derivative of the expansive part of the double
+                well potential
         """
         return self.scaling * (pf - 0.5)
 
     def edoubleprime(self, pf: Function) -> Function:
-        """Evaluate the second derivative of the expansive part of the double well potential. Psi_e'' = 1.
+        """
+        Evaluate 2nd derivative of expansive part of double well.
+
+        Psi_e'' = 1.
 
         Args:
             pf (Function): Phasefield
 
         Returns:
-            Function: Second derivative of the expansive part of the double well potential
+            Function: Second derivative of the expansive part of the
+                double well potential
         """
         return self.scaling * 1.0
 
+
 """Classic double well potential with cutoff for -1/1 CH model."""
 
+
 class SymmetricDoubleWellPotential_cutoff:
-    """Classic double well potential Psi = (1 - pf^2)^2 with cutoff (for the convex part)."""
+    """
+    Classic double well potential with cutoff (for the convex part).
+
+    Psi = (1 - pf^2)^2.
+    """
 
     def __init__(self, scaling: float = 1.0, beta: float = 1.5) -> None:
         """Initialize the double well potential.
@@ -172,88 +224,106 @@ class SymmetricDoubleWellPotential_cutoff:
             Function: Double well potential with cutoff
         """
         return ufl.conditional(
-            ufl.classes.OrCondition(ufl.le(pf, - self.beta ),ufl.ge(pf, self.beta)), 
-            self.scaling * (2 * (self.beta ** 2 - 1.0) * pf ** 2 - (self.beta ** 4 - 1)), 
-            self.scaling  * (1 - pf ** 2) ** 2
+            ufl.classes.OrCondition(ufl.le(pf, -self.beta), ufl.ge(pf, self.beta)),
+            self.scaling * (2 * (self.beta**2 - 1.0) * pf**2 - (self.beta**4 - 1)),
+            self.scaling * (1 - pf**2) ** 2,
         )
 
     def prime(self, pf: Function) -> Function:
-        """Evaluate the derivative of the double well potential with cutoff.
+        """
+        Evaluate derivative of double well potential with cutoff.
 
         Args:
             pf (Function): Phasefield
 
         Returns:
-            Function: Derivative of the double well potential with cutoff
+            Function: Derivative of the double well potential with
+                cutoff
         """
         return ufl.conditional(
-            ufl.classes.OrCondition(ufl.le(pf, - self.beta),ufl.ge(pf, self.beta)), 
-            self.scaling * 4 * (self.beta ** 2 - 1.0) * pf, 
-            self.scaling * (-4) * pf * (1 - pf**2) 
+            ufl.classes.OrCondition(ufl.le(pf, -self.beta), ufl.ge(pf, self.beta)),
+            self.scaling * 4 * (self.beta**2 - 1.0) * pf,
+            self.scaling * (-4) * pf * (1 - pf**2),
         )
 
     def doubleprime(self, pf: Function) -> Function:
-        """Evaluate the second derivative of the double well potential with cutoff.
+        """
+        Evaluate 2nd derivative of double well potential with cutoff.
 
         Args:
             pf (Function): Phasefield
 
         Returns:
-            Function: Second derivative of the double well potential with cutoff
+            Function: Second derivative of the double well potential
+                with cutoff
         """
         return ufl.conditional(
-            ufl.classes.OrCondition(ufl.le(pf, - self.beta ),ufl.ge(pf, self.beta)), 
-            self.scaling * 4 * (self.beta ** 2 - 1.0), 
-            self.scaling * (-4) * ((1 - pf**2) - 2 * pf ** 2)
+            ufl.classes.OrCondition(ufl.le(pf, -self.beta), ufl.ge(pf, self.beta)),
+            self.scaling * 4 * (self.beta**2 - 1.0),
+            self.scaling * (-4) * ((1 - pf**2) - 2 * pf**2),
         )
 
     def c(self, pf: Function) -> Function:
-        """Evaluate the convex part of the double well potential Psi_c = pf^4+1 with cutoff.
+        """
+        Evaluate convex part of double well potential with cutoff.
+
+        Psi_c = pf^4+1.
 
         args:
             pf (Function): Phasefield
 
         returns:
-            Function: Convex part of the double well potential with cutoff
+            Function: Convex part of the double well potential with
+                cutoff
         """
         return ufl.conditional(
-            ufl.classes.OrCondition(ufl.le(pf, - self.beta),ufl.ge(pf, self.beta)), 
-            self.scaling * (2 * self.beta ** 2 * (pf) ** 2 - (self.beta ** 4 - 1.0)), 
-            self.scaling * ((pf) ** 4 + 1.0)
+            ufl.classes.OrCondition(ufl.le(pf, -self.beta), ufl.ge(pf, self.beta)),
+            self.scaling * (2 * self.beta**2 * (pf) ** 2 - (self.beta**4 - 1.0)),
+            self.scaling * ((pf) ** 4 + 1.0),
         )
 
     def cprime(self, pf: Function) -> Function:
-        """Evaluate the derivative of the convex part of the double well potential Psi_c' = 4*pf^3 with cutoff (Lipschitz continuous).
+        """
+        Evaluate derivative of convex part with cutoff (Lipschitz).
+
+        Psi_c' = 4*pf^3.
 
         Args:
             pf (Function): Phasefield
 
         Returns:
-            Function: Derivative of the convex part of the double well potential with cutoff
+            Function: Derivative of the convex part of the double well
+                potential with cutoff
         """
         return ufl.conditional(
-            ufl.classes.OrCondition(ufl.le(pf, - self.beta),ufl.ge(pf, self.beta)), 
-            self.scaling * 4 * self.beta ** 2 * pf, 
-            self.scaling * 4 * pf ** 3
+            ufl.classes.OrCondition(ufl.le(pf, -self.beta), ufl.ge(pf, self.beta)),
+            self.scaling * 4 * self.beta**2 * pf,
+            self.scaling * 4 * pf**3,
         )
-        
+
     def cdoubleprime(self, pf: Function) -> Function:
-        """Evaluate the second derivative of the convex part of the double well potential Psi_c'' = 12*pf^2 with cutoff.
+        """
+        Evaluate second derivative of convex part with cutoff.
+
+        Psi_c'' = 12*pf^2.
 
         Args:
             pf (Function): Phasefield
 
         Returns:
-            Function: Second derivative of the convex part of the double well potential with cutoff
+            Function: Second derivative of convex part with cutoff
         """
         return ufl.conditional(
-            ufl.classes.OrCondition(ufl.le(pf, - self.beta),ufl.ge(pf, self.beta)), 
-            self.scaling * 4 * self.beta ** 2, 
-            self.scaling * 12 * pf ** 2
+            ufl.classes.OrCondition(ufl.le(pf, -self.beta), ufl.ge(pf, self.beta)),
+            self.scaling * 4 * self.beta**2,
+            self.scaling * 12 * pf**2,
         )
 
     def e(self, pf: Function) -> Function:
-        """Evaluate the expansive part of the double well potential. Psi_e = 2*pf^2.
+        """
+        Evaluate the expansive part of the double well potential.
+
+        Psi_e = 2*pf^2.
 
         Args:
             pf (Function): Phasefield
@@ -261,27 +331,34 @@ class SymmetricDoubleWellPotential_cutoff:
         Returns:
             Function: Expansive part of the double well potential
         """
-        return self.scaling * 2 * pf ** 2
+        return self.scaling * 2 * pf**2
 
     def eprime(self, pf: Function) -> Function:
-        """Evaluate the derivative of the expansive part of the double well potential. Psi_e' = 4*pf.
+        """
+        Evaluate derivative of the expansive part.
+
+        Psi_e' = 4*pf.
 
         Args:
             pf (Function): Phasefield
 
         Returns:
-            Function: Derivative of the expansive part of the double well potential
+            Function: Derivative of the expansive part of the double
+                well potential
         """
         return self.scaling * 4.0 * pf
 
     def edoubleprime(self, pf: Function) -> Function:
-        """Evaluate the second derivative of the expansive part of the double well potential. Psi_e'' = 4.
+        """
+        Evaluate second derivative of the expansive part.
+
+        Psi_e'' = 4.
 
         Args:
             pf (Function): Phasefield
 
         Returns:
-            Function: Second derivative of the expansive part of the double well potential
+            Function: Second derivative of the expansive part of the
+                double well potential
         """
         return self.scaling * 4.0
-

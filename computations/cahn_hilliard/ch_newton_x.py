@@ -1,32 +1,13 @@
-import chb
-
-import numpy as np
-
-from mpi4py import MPI
-
-from petsc4py import PETSc
-
-from basix.ufl import element, mixed_element
-
-from dolfinx import mesh
-from dolfinx.io import XDMFFile
-from dolfinx.fem import functionspace, Function, assemble_scalar, form
-from dolfinx.fem.petsc import LinearProblem
-
-from ufl import (
-    Measure,
-    TestFunction,
-    TrialFunction,
-    split,
-    Constant,
-    inner,
-    grad,
-    dx,
-    rhs,
-    lhs,
-)
-
 import dolfinx
+from basix.ufl import element, mixed_element
+from dolfinx import mesh
+from dolfinx.fem import Function, functionspace
+from dolfinx.fem.petsc import LinearProblem
+from dolfinx.io import XDMFFile
+from mpi4py import MPI
+from ufl import TestFunction, TrialFunction, dx, grad, inner, lhs, rhs, split
+
+import chb
 
 print(dolfinx.__version__)
 

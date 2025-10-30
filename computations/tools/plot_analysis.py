@@ -1,5 +1,4 @@
 import matplotlib.pyplot as plt
-
 import numpy as np
 
 path = "/home/erlend/src/fenics/output/chb/halfnhalf/threewaysplit/"
