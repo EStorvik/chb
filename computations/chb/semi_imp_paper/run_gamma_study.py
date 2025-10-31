@@ -20,7 +20,7 @@ import time
 from pathlib import Path
 
 # Configuration
-GAMMA_VALUES = [0.25, 0.5, 1, 2, 4, 8, 16]
+GAMMA_VALUES = [0.25, 0.5, 1, 2, 4, 8]
 SCRIPT_DIR = Path(__file__).parent
 OUTPUT_DIR = SCRIPT_DIR / "../output/log"
 PYTHON_EXECUTABLE = "/Users/erlend/miniforge3/envs/fenicsx-env/bin/python"

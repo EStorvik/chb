@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 
 # Configuration
-GAMMA_VALUES = [0.25, 0.5, 1, 2, 4, 8, 16]
+GAMMA_VALUES = [0.25, 0.5, 1, 2, 4, 8]
 OUTPUT_DIR = Path("../output/log")
 SCRIPT_NAMES = [
     "chb_monolithic_semi_imp",

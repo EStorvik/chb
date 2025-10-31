@@ -1,4 +1,9 @@
 import os
+
+# Fix MPI/OFI finalization errors on macOS
+os.environ['FI_PROVIDER'] = 'tcp'
+os.environ['MPICH_OFI_STARTUP_CONNECT'] = '0'
+
 from time import time
 
 import numpy as np
@@ -42,7 +47,7 @@ msh = mesh.create_unit_square(MPI.COMM_WORLD, nx, ny, mesh.CellType.triangle)
 
 # CH
 ell = 0.025
-gamma = 2
+gamma = 8
 mobility = 1
 doublewell = chb.energies.SymmetricDoubleWellPotential_cutoff()
 
@@ -56,7 +61,7 @@ interpolator = chb.interpolate.SymmetricStandardInterpolator()
 stiffness_tensor = chb.elasticity.HeterogeneousStiffnessTensor(
     interpolator=interpolator
 )
-swelling = chb.elasticity.Swelling(swelling_parameter=0.0625, pf_ref=0)
+swelling = chb.elasticity.Swelling(swelling_parameter=0.5, pf_ref=0)
 
 # Biot
 alpha = chb.biot.NonlinearBiotCoupling(alpha0=1, alpha1=0.1, interpolator=interpolator)
@@ -424,72 +429,10 @@ except ImportError:
     print(f"Excel writer not available, log data saved to CSV: {csv_path}")
     print("Install openpyxl with: pip install openpyxl")
 
-# Plot Total Energy
-# plt.figure(figsize=(10, 6))
-# plt.plot(t_vec, energy_vec, 'r-', linewidth=2, label="Total energy")
-# plt.xlabel('Time')
-# plt.ylabel('Total Energy')
-# plt.title('Total Energy Evolution')
-# plt.legend()
-# plt.grid(True, alpha=0.3)
-# plt.show()
-
-# Plot Interface Energy
-# plt.figure(figsize=(10, 6))
-# plt.plot(t_vec, energy_int_vec, 'b-', linewidth=2, label="Interface energy")
-# plt.xlabel('Time')
-# plt.ylabel('Interface Energy')
-# plt.title('Interface Energy Evolution')
-# plt.legend()
-# plt.grid(True, alpha=0.3)
-# plt.show()
-
-# Plot Elastic Energy
-# plt.figure(figsize=(10, 6))
-# plt.plot(t_vec, energy_el_vec, 'g-', linewidth=2, label="Elastic energy")
-# plt.xlabel('Time')
-# plt.ylabel('Elastic Energy')
-# plt.title('Elastic Energy Evolution')
-# plt.legend()
-# plt.grid(True, alpha=0.3)
-# plt.show()
-
-# Plot Fluid Energy
-# plt.figure(figsize=(10, 6))
-# plt.plot(t_vec, energy_fl_vec, 'm-', linewidth=2, label="Fluid energy")
-# plt.xlabel('Time')
-# plt.ylabel('Fluid Energy')
-# plt.title('Fluid Energy Evolution')
-# plt.legend()
-# plt.grid(True, alpha=0.3)
-# plt.show()
-
-# def plot_along_line(u, msh, y=0.5, filename="line_data.npy"):
-#     # Create an array of x-coordinates along the line y=0.5
-#     x_coords = np.linspace(msh.geometry.x.min(), msh.geometry.x.max(), 100)
-#     y_coord = y
-#     points = np.array([[x, y_coord, 0] for x in x_coords])
-
-#     tree = bb_tree(msh, msh.geometry.dim)
-#     values = []
-
-#     for point in points:
-#         cell_candidates = compute_collisions_points(tree, point.T)
-#         cell = compute_colliding_cells(msh, cell_candidates, point).array
-#         assert len(cell) > 0
-#         first_cell = cell[0]
-#         values.append(u.eval(point, first_cell))
-
-#     # Save the x-coordinates and values to a numpy file
-#     np.save(filename, {"x_coords": x_coords, "values": values})
-
-#     plt.figure()
-#     plt.plot(x_coords, values, label=f"Solution at y={0.5}")
-
-#     plt.show()
-
-# plot_along_line(xiCH.sub(0), msh=msh, filename=f"../output/line_data_{ell}ell.npy")
-# plot_along_line(xiB_n.sub(2), msh=msh, filename=f"../output/line_data_{ell}ell.npy")
 
 output_file_pf.close()
 output_file_p.close()
+
+# Exit cleanly to avoid MPI finalization errors
+import sys
+sys.exit(0)

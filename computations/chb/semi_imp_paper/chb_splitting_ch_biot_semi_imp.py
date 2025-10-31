@@ -1,6 +1,10 @@
 import os
 from time import time
 
+# Fix MPI/OFI finalization errors on macOS
+os.environ['FI_PROVIDER'] = 'tcp'
+os.environ['MPICH_OFI_STARTUP_CONNECT'] = '0'
+
 import numpy as np
 import pandas
 from basix.ufl import element, mixed_element
@@ -42,7 +46,7 @@ msh = mesh.create_unit_square(MPI.COMM_WORLD, nx, ny, mesh.CellType.triangle)
 
 # CH
 ell = 0.025
-gamma = 2
+gamma = 8
 mobility = 1
 doublewell = chb.energies.SymmetricDoubleWellPotential_cutoff()
 
@@ -56,7 +60,7 @@ interpolator = chb.interpolate.SymmetricStandardInterpolator()
 stiffness_tensor = chb.elasticity.HeterogeneousStiffnessTensor(
     interpolator=interpolator
 )
-swelling = chb.elasticity.Swelling(swelling_parameter=0.0625, pf_ref=0.0)
+swelling = chb.elasticity.Swelling(swelling_parameter=0.5, pf_ref=0.0)
 
 # Biot
 alpha = chb.biot.NonlinearBiotCoupling(alpha0=1, alpha1=0.1, interpolator=interpolator)
