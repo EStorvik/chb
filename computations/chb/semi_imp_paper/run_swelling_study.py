@@ -21,9 +21,11 @@ import subprocess
 import time
 from pathlib import Path
 
+import pandas as pd
+
 # Configuration
 SWELLING_VALUES = [0.0625, 0.125, 0.25, 0.5, 1]
-FIXED_GAMMA = 2  # Fixed gamma value for this study
+FIXED_GAMMA = 1  # Fixed gamma value for this study
 SCRIPT_DIR = Path(__file__).parent
 OUTPUT_DIR = SCRIPT_DIR / "../output/log"
 PYTHON_EXECUTABLE = "/Users/erlend/miniforge3/envs/fenicsx-env/bin/python"
@@ -284,6 +286,9 @@ def main():
     successful_runs = 0
     total_runs = len(SWELLING_VALUES) * len(SIMULATION_SCRIPTS)
 
+    # Track results for summary table
+    results = []
+
     # Main loop: iterate over swelling_parameter values
     for i, swelling in enumerate(SWELLING_VALUES, 1):
         print(
@@ -301,16 +306,34 @@ def main():
 
             print(f"  [{j}/{len(SIMULATION_SCRIPTS)}] {script_name}")
 
+            success = False
+            status = "Failed"
+
             # Modify swelling_parameter and gamma parameters
             if modify_parameters(script_path, swelling, FIXED_GAMMA):
                 # Run simulation
                 if run_simulation(script_path):
                     successful_runs += 1
                     swelling_successes += 1
+                    success = True
+                    status = "Success"
                 else:
                     print(f"    ⚠️  Simulation failed, continuing...")
+                    status = "Simulation failed"
             else:
                 print(f"    ⚠️  Could not modify parameters, skipping...")
+                status = "Parameter modification failed"
+
+            # Record result
+            results.append(
+                {
+                    "Swelling_Parameter": swelling,
+                    "Gamma": FIXED_GAMMA,
+                    "Script": script_name,
+                    "Status": status,
+                    "Success": success,
+                }
+            )
 
         # Rename output files for this swelling_parameter
         if swelling_successes > 0:
@@ -318,7 +341,8 @@ def main():
             rename_output_files(swelling)
 
         print(
-            f"  Summary: {swelling_successes}/{len(SIMULATION_SCRIPTS)} simulations successful"
+            f"  Summary: {swelling_successes}/{len(SIMULATION_SCRIPTS)} "
+            f"simulations successful"
         )
 
     # Final summary
@@ -326,7 +350,10 @@ def main():
     print("\n" + "=" * 80)
     print("FINAL SUMMARY")
     print("=" * 80)
-    print(f"Total time elapsed: {total_time:.1f} seconds ({total_time / 60:.1f} minutes)")
+    print(
+        f"Total time elapsed: {total_time:.1f} seconds "
+        f"({total_time / 60:.1f} minutes)"
+    )
     print(f"Successful simulations: {successful_runs} / {total_runs}")
     print(f"Success rate: {100 * successful_runs / total_runs:.1f}%")
     print(f"Output files saved to: {OUTPUT_DIR}")
@@ -337,6 +364,62 @@ def main():
         print("⚠️  Some simulations failed - check output above")
     else:
         print("❌ All simulations failed - check configuration")
+
+    print("=" * 80)
+
+    # Create summary Excel file
+    summary_df = pd.DataFrame(results)
+
+    # Create a pivot table for better visualization
+    pivot_df = summary_df.pivot_table(
+        index="Script", columns="Swelling_Parameter", values="Success", aggfunc="first"
+    )
+
+    # Replace True/False with Success/Failed for readability
+    pivot_df = pivot_df.replace({True: "Success", False: "Failed"})
+
+    # Save to Excel
+    summary_path = OUTPUT_DIR / "swelling_study_summary.xlsx"
+    try:
+        with pd.ExcelWriter(summary_path, engine="openpyxl") as writer:
+            # Write detailed results
+            summary_df.to_excel(writer, sheet_name="Detailed_Results", index=False)
+
+            # Write pivot table
+            pivot_df.to_excel(writer, sheet_name="Summary_Matrix")
+
+            # Write overall statistics
+            stats_data = {
+                "Metric": [
+                    "Total Simulations",
+                    "Successful Runs",
+                    "Failed Runs",
+                    "Success Rate (%)",
+                    "Total Time (seconds)",
+                    "Total Time (minutes)",
+                    "Average Time per Simulation (seconds)",
+                ],
+                "Value": [
+                    total_runs,
+                    successful_runs,
+                    total_runs - successful_runs,
+                    100 * successful_runs / total_runs,
+                    total_time,
+                    total_time / 60,
+                    total_time / total_runs if total_runs > 0 else 0,
+                ],
+            }
+            stats_df = pd.DataFrame(stats_data)
+            stats_df.to_excel(writer, sheet_name="Statistics", index=False)
+
+        print(f"\n✓ Summary Excel file created: {summary_path}")
+
+    except ImportError:
+        # Fallback to CSV if openpyxl is not available
+        csv_path = summary_path.with_suffix(".csv")
+        summary_df.to_csv(csv_path, index=False)
+        print(f"\n✓ Summary CSV file created: {csv_path}")
+        print("  (Install openpyxl for Excel format: pip install openpyxl)")
 
     print("=" * 80)
 

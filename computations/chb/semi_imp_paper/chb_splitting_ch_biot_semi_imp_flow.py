@@ -6,7 +6,7 @@ os.environ["FI_PROVIDER"] = "tcp"
 os.environ["MPICH_OFI_STARTUP_CONNECT"] = "0"
 
 import numpy as np
-import pandas as pd
+import pandas
 from basix.ufl import element, mixed_element
 from dolfinx import mesh
 from dolfinx.fem import (
@@ -17,7 +17,7 @@ from dolfinx.fem import (
     functionspace,
     locate_dofs_topological,
 )
-from dolfinx.fem.petsc import NonlinearProblem
+from dolfinx.fem.petsc import LinearProblem, NonlinearProblem
 from dolfinx.io import XDMFFile
 from dolfinx.nls.petsc import NewtonSolver
 from mpi4py import MPI
@@ -25,12 +25,17 @@ from ufl import (
     Identity,
     Measure,
     TestFunction,
+    TrialFunction,
     div,
     dx,
+    ds,
     grad,
     inner,
+    lhs,
+    rhs,
     split,
     sym,
+    Constant,
 )
 
 import chb
@@ -57,57 +62,74 @@ interpolator = chb.interpolate.SymmetricStandardInterpolator()
 stiffness_tensor = chb.elasticity.HeterogeneousStiffnessTensor(
     interpolator=interpolator
 )
-swelling = chb.elasticity.Swelling(swelling_parameter=1, pf_ref=0)
+swelling = chb.elasticity.Swelling(swelling_parameter=0.3, pf_ref=0.0)
 
 # Biot
 alpha = chb.biot.NonlinearBiotCoupling(alpha0=1, alpha1=0.1, interpolator=interpolator)
 
 # Flow
-permeability = 1
+permeability = chb.flow.NonlinearPermeability(k0=0.01, k1=10, interpolator=interpolator)
 compressibility = chb.flow.NonlinearCompressibility(
     M0=1, M1=0.1, interpolator=interpolator
 )
 
 # Time discretization
 dt = 1.0e-5
-num_time_steps = 100
+num_time_steps = 80
 T = dt * num_time_steps
 
-# Nonlinear iteration parameters
-max_iter = 20
-tol = 1e-6
+# Splitting iteration parameters
+max_iter_split = 20
+tol_split = 1e-6
 
 
 # Finite elements
 P1 = element("Lagrange", msh.basix_cell(), 1)
 P1U = element("Lagrange", msh.basix_cell(), 1, shape=(msh.geometry.dim,))
-ME = mixed_element([P1, P1, P1U, P1, P1])
+MEch = mixed_element([P1, P1])
+MEb = mixed_element([P1U, P1, P1])
 
 # Function spaces
-V = functionspace(msh, ME)
+Vch = functionspace(msh, MEch)
+Vb = functionspace(msh, MEb)
 
-# Solution function
-xi = Function(V)
-pf, mu, u, theta, p = split(xi)
+# Solution and test functions
+xiCH = Function(Vch)
+etaCH = TestFunction(Vch)
+pf, mu = split(xiCH)
+eta_pf, eta_mu = split(etaCH)
 
-# Test function
-eta = TestFunction(V)
-eta_pf, eta_mu, eta_u, eta_theta, eta_p = split(eta)
+xiB = TrialFunction(Vb)
+etaB = TestFunction(Vb)
+u, theta, p = split(xiB)
+eta_u, eta_theta, eta_p = split(etaB)
+xiB_n = Function(Vb)
 
 # Solution function at previous time step
-xi_old = Function(V)
-pf_old, mu_old, u_old, theta_old, p_old = split(xi_old)
+xiCH_old = Function(Vch)
+pf_old, mu_old = split(xiCH_old)
+xiB_old = Function(Vb)
+u_old, theta_old, p_old = split(xiB_old)
+
+# Solution function at previous iteration step
+xiCH_prev = Function(Vch)
+pf_prev, mu_prev = split(xiCH_prev)
+xiB_prev = Function(Vb)
+u_prev, theta_prev, p_prev = split(xiB_prev)
 
 
 # Initial condtions
-initialcondition_cross = chb.initialconditions.Cross(width=0.3)
-initialcondition = chb.initialconditions.symmetrichalfnhalf
-xi.sub(0).interpolate(initialcondition)
-xi.sub(1).interpolate(lambda x: np.zeros((1, x.shape[1])))
-xi.sub(2).interpolate(lambda x: np.zeros((2, x.shape[1])))
-xi.sub(3).interpolate(lambda x: np.zeros((1, x.shape[1])))
-xi.sub(4).interpolate(lambda x: np.zeros((1, x.shape[1])))
-xi.x.scatter_forward()
+initialcondition = chb.initialconditions.CrossSymmetric(width=0.3)
+# initialcondition = chb.initialconditions.symmetrichalfnhalf
+xiCH.sub(0).interpolate(initialcondition)
+xiCH.sub(1).interpolate(lambda x: np.zeros((1, x.shape[1])))
+xiCH.x.scatter_forward()
+
+xiB_n.sub(0).interpolate(lambda x: np.zeros((2, x.shape[1])))
+xiB_n.sub(1).interpolate(lambda x: np.zeros((1, x.shape[1])))
+xiB_n.sub(2).interpolate(lambda x: np.zeros((1, x.shape[1])))
+xiB_n.x.scatter_forward()
+u_n, theta_n, p_n = split(xiB_n)
 
 
 # Boundary conditions
@@ -126,19 +148,19 @@ def boundary_right(x):
     return np.isclose(x[0], 1.0)
 
 
-V_u = V.sub(2)
-V_p = V.sub(4)
+V_u = Vb.sub(0)
+V_p = Vb.sub(2)
 facets = mesh.locate_entities_boundary(msh, msh.topology.dim - 1, boundary)
 # facets_left = mesh.locate_entities_boundary(msh, msh.topology.dim -1, boundary_left)
-# facets_right = mesh.locate_entities_boundary(msh, msh.topology.dim -1, boundary_right)
+facets_right = mesh.locate_entities_boundary(msh, msh.topology.dim - 1, boundary_right)
 dofs_u = locate_dofs_topological(V_u, msh.topology.dim - 1, facets)
 # dofs_p = locate_dofs_topological(V_p, msh.topology.dim - 1, facets)
 # dofs_p_left = locate_dofs_topological(V_p, msh.topology.dim - 1, facets_left)
-# dofs_p_right = locate_dofs_topological(V_p, msh.topology.dim - 1, facets_right)
+dofs_p_right = locate_dofs_topological(V_p, msh.topology.dim - 1, facets_right)
 
-_, _, u_bc, _, _ = Function(V).split()
-# _, _, u_bc, _, p_bc_left = Function(V).split()
-# _, _, _, _, p_bc_right = Function(V).split()
+u_bc, _, _ = Function(Vb).split()
+# u_bc, _, p_bc_left = Function(Vb).split()
+_, _, p_bc_right = Function(Vb).split()
 
 u_bc.interpolate(lambda x: np.zeros((2, x.shape[1])))
 bc_u = dirichletbc(u_bc, dofs_u)
@@ -147,7 +169,16 @@ bc_u = dirichletbc(u_bc, dofs_u)
 # bc_p = dirichletbc(p_bc, dofs_p)
 
 # p_bc_left.interpolate(lambda x: np.ones((1, x.shape[1])))
-# p_bc_right.interpolate(lambda x: np.zeros((1, x.shape[1])))
+p_bc_right.interpolate(lambda x: np.zeros((1, x.shape[1])))
+bc_p = dirichletbc(p_bc_right, dofs_p_right)
+
+
+# Neumann condition function for flow
+
+V_g = functionspace(msh, ("Lagrange", 1))
+g = Function(V_g)
+g.interpolate(lambda x: np.where((x[1] > 0.01) & (x[1] < 0.99), 1.0, 0.0))
+
 
 # bc_p_left = dirichletbc(p_bc_left, dofs_p_left)
 # bc_p_right = dirichletbc(p_bc_right, dofs_p_right)
@@ -174,7 +205,9 @@ F_mu = (
                 sym(grad(u_old)) - swelling(pf_old),
             )
             - inner(
-                stiffness_tensor.stress(strain=sym(grad(u)) - swelling(pf), pf=pf_old),
+                stiffness_tensor.stress(
+                    strain=sym(grad(u_prev)) - swelling(pf), pf=pf_old
+                ),
                 swelling.prime(),
             ),
             eta_mu,
@@ -188,8 +221,8 @@ F_mu = (
             * (theta_old - alpha(pf_old) * div(u_old)) ** 2
             - alpha.prime(pf)
             * compressibility(pf_old)
-            * (theta - alpha(pf) * div(u))
-            * div(u),
+            * (theta_prev - alpha(pf) * div(u_prev))
+            * div(u_prev),
             eta_mu,
         )
         * dx
@@ -210,41 +243,47 @@ F_u = (
 
 F_theta = (
     inner(theta - theta_old, eta_theta) * dx
-    + dt * permeability * inner(grad(p), grad(eta_theta)) * dx
+    + dt * permeability(pf_old) * inner(grad(p), grad(eta_theta)) * dx
 )
 
 F_p = (
     inner(p, eta_p) * dx
     - inner(compressibility(pf_old) * (theta - alpha(pf) * div(u)), eta_p) * dx
+    + g * eta_p * ds
 )
 
-F = F_pf + F_mu + F_u + F_theta + F_p
+Fch = F_pf + F_mu
+Fb = F_u + F_theta + F_p
 
 
-# Set up nonlinear problem
-problem = NonlinearProblem(
-    F, xi, bcs=[bc_u]
+# Set up non-linear problems
+problemCH = NonlinearProblem(Fch, xiCH, bcs=[])
+
+aB = lhs(Fb)
+lB = rhs(Fb)
+problemB = LinearProblem(
+    aB, lB, bcs=[bc_u, bc_p]
 )  # bcs=[bc_u, bc_p_left, bc_p_right], bcs=[bc_u]
 
 # Set up Newton solver
-solver = NewtonSolver(MPI.COMM_WORLD, problem)
-solver.max_it = 100
-solver.rtol = 1e-6
+solverCH = NewtonSolver(MPI.COMM_WORLD, problemCH)
+solverCH.max_it = 100
+solverCH.rtol = 1e-6
 # solver.convergence_criterion = "incremental"
 
 # Pyvista plot
-# viz = chb.visualization.PyvistaVizualization(V.sub(0), xi.sub(0), 0.0)
+# viz = chb.visualization.PyvistaVizualization(Vch.sub(0), xiCH.sub(0), 0.0)
+# vizP = chb.visualization.PyvistaVizualization(Vb.sub(2), xiB_n.sub(2), 0.0, "pressure")
 
 # Output file
-filenamepath = "../output/chb_monolithic_semiimp_"
+filenamepath = "../output/flow_through_cross"
 output_file_pf = XDMFFile(MPI.COMM_WORLD, filenamepath + f"{ell}ell_pf.xdmf", "w")
-# output_file_pf = VTKFile(MPI.COMM_WORLD, f"../output/chb_{ell}ell_pf.pvd", "w")
-output_file_p = XDMFFile(
-    MPI.COMM_WORLD, filenamepath + f"{ell}ell_p.xdmf", "w"
-)  # (..., encoding=XDMFFile.Encoding.ASCII)
+output_file_p = XDMFFile(MPI.COMM_WORLD, filenamepath + f"{ell}ell_p.xdmf", "w")
+output_file_theta = XDMFFile(MPI.COMM_WORLD, filenamepath + f"{ell}ell_theta.xdmf", "w")
 
 output_file_pf.write_mesh(msh)
 output_file_p.write_mesh(msh)
+output_file_theta.write_mesh(msh)
 
 
 # Energy
@@ -272,83 +311,109 @@ def energyTotal(pf, u, theta, dx):
 
 
 t_vec = []
-energy_int_vec = []
-energy_el_vec = []
-energy_fl_vec = []
 energy_vec = []
+energy_int_vec = []  # Interface energy
+energy_el_vec = []  # Elastic energy
+energy_fl_vec = []  # Fluid energy
 iterations = []
 times = []
-
 # Time stepping
 t = 0.0
 
 for i in range(num_time_steps):
     # Set old time-step functions
-    xi_old.x.array[:] = xi.x.array
-    xi_old.x.scatter_forward()
+    xiCH_old.x.array[:] = xiCH.x.array
+    xiCH_old.x.scatter_forward()
+    xiB_old.x.array[:] = xiB_n.x.array
+    xiB_old.x.scatter_forward()
 
     # Update current time
     t += dt
-
+    iteration = 0
     tpre = time()
-    # Solve the nonlinear problem
-    n, converged = solver.solve(xi)
+    for j in range(max_iter_split):
+        iteration += 1
+        # Set previous iteration functions
+        xiCH_prev.x.array[:] = xiCH.x.array
+        xiCH_prev.x.scatter_forward()
+        xiB_prev.x.array[:] = xiB_n.x.array
+        xiB_prev.x.scatter_forward()
+
+        # Solve the non-linear problems
+        nCH, convergedCH = solverCH.solve(xiCH)
+        xiB_n = problemB.solve()
+        xiB_n.x.scatter_forward()
+        u_n, theta_n, p_n = xiB_n.split()
+
+        increment_split = chb.util.l2norm_3(pf - pf_prev, u_n - u_prev, p_n - p_prev)
+        print(f"Increment norm at time step {i} splitting step {j}: {increment_split}")
+
+        if increment_split < tol_split:
+            break
 
     tpost = time() - tpre
     # Update the plot window
-    # viz.update(xi.sub(0), t)
+    # viz.update(xiCH.sub(0), t)
+    # vizP.update(xiB_n.sub(2), t)
 
-    energy_int = assemble_scalar(form(energy_i(pf, dx=Measure("dx", domain=msh))))
-    energy_el = assemble_scalar(form(energy_e(pf, u, dx=Measure("dx", domain=msh))))
-    energy_fl = assemble_scalar(
-        form(energy_f(pf, u, theta, dx=Measure("dx", domain=msh)))
-    )
-    energy_total = energyTotal(pf, u, theta, dx=Measure("dx", domain=msh))
+    energy_total = energyTotal(pf, u_n, theta_n, dx=Measure("dx", domain=msh))
     energy = assemble_scalar(form(energy_total))
-    print(f"Energy at time step {i}: {energy}")
+
+    # Calculate individual energy components
+    energy_int_form = energy_i(pf, dx=Measure("dx", domain=msh))
+    energy_el_form = energy_e(pf, u_n, dx=Measure("dx", domain=msh))
+    energy_fl_form = energy_f(pf, u_n, theta_n, dx=Measure("dx", domain=msh))
+
+    energy_int = assemble_scalar(form(energy_int_form))
+    energy_el = assemble_scalar(form(energy_el_form))
+    energy_fl = assemble_scalar(form(energy_fl_form))
 
     t_vec.append(tpost)
+    energy_vec.append(energy)
     energy_int_vec.append(energy_int)
     energy_el_vec.append(energy_el)
     energy_fl_vec.append(energy_fl)
-    energy_vec.append(energy)
-    iterations.append(n)
+    iterations.append(iteration)
     times.append(tpost)
 
     # Output
-    pf_out, _, _, _, p_out = xi.split()
-    output_file_pf.write_function(pf_out, t)  # pf_out.collapse() for VTKFile
+    pf_out, _ = xiCH.split()
+    output_file_pf.write_function(pf_out, t)
+    _, theta_out, p_out = xiB_n.split()
     output_file_p.write_function(p_out, t)
+    output_file_theta.write_function(theta_out, t)
 
 
-# viz.final_plot(xi.sub(0))
+# viz.final_plot(xiCH.sub(0))
+# vizP.final_plot(xiB_n.sub(2))
 
-# Create log DataFrame and save to Excel
-log_data = {
-    "Time_Step": range(1, len(t_vec) + 1),  # Enumerate time steps starting from 1
-    "Iterations": iterations,
-    "Time": t_vec,
-    "Total_Energy": energy_vec,
-    "Interface_Energy": energy_int_vec,
-    "Elastic_Energy": energy_el_vec,
-    "Fluid_Energy": energy_fl_vec,
-}
+# # Create log DataFrame and save to Excel
+# log_data = {
+#     "Time_Step": range(1, len(t_vec) + 1),  # Enumerate time steps starting from 1
+#     "Iterations": iterations,
+#     "Time": t_vec,
+#     "Total_Energy": energy_vec,
+#     "Interface_Energy": energy_int_vec,
+#     "Elastic_Energy": energy_el_vec,
+#     "Fluid_Energy": energy_fl_vec,
+# }
 
-log_df = pd.DataFrame(log_data)
-log_filenamepath = "../output/log/chb_monolithic_semi_imp.xlsx"
+# log_df = pandas.DataFrame(log_data)
+# log_filenamepath = "../output/log/chb_splitting_ch_biot_semi_imp.xlsx"
 
-os.makedirs(os.path.dirname(log_filenamepath), exist_ok=True)
 
-try:
-    # Try to save as Excel file (requires openpyxl)
-    log_df.to_excel(log_filenamepath, index=False, sheet_name="Simulation_Log")
-    print(f"Log data saved to Excel file: {log_filenamepath}")
-except ImportError:
-    # Fallback to CSV if openpyxl is not available
-    csv_path = log_filenamepath.replace(".xlsx", ".csv")
-    log_df.to_csv(csv_path, index=False)
-    print(f"Excel writer not available, log data saved to CSV: {csv_path}")
-    print("Install openpyxl with: pip install openpyxl")
+# os.makedirs(os.path.dirname(log_filenamepath), exist_ok=True)
+
+# try:
+#     # Try to save as Excel file (requires openpyxl)
+#     log_df.to_excel(log_filenamepath, index=False, sheet_name="Simulation_Log")
+#     print(f"Log data saved to Excel file: {log_filenamepath}")
+# except ImportError:
+#     # Fallback to CSV if openpyxl is not available
+#     csv_path = log_filenamepath.replace(".xlsx", ".csv")
+#     log_df.to_csv(csv_path, index=False)
+#     print(f"Excel writer not available, log data saved to CSV: {csv_path}")
+#     print("Install openpyxl with: pip install openpyxl")
 
 # Plot Total Energy
 # plt.figure(figsize=(10, 6))
@@ -414,7 +479,9 @@ except ImportError:
 
 #     plt.show()
 
-# plot_along_line(xi.sub(0), msh=msh, filename=f"../output/line_data_{ell}ell.npy")
+# plot_along_line(xiCH.sub(0), msh=msh, filename=f"../output/line_data_{ell}ell.npy")
+# plot_along_line(xiB_n.sub(2), msh=msh, filename=f"../output/line_data_{ell}ell.npy")
 
 output_file_pf.close()
 output_file_p.close()
+output_file_theta.close()

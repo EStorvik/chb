@@ -235,7 +235,9 @@ def main():
     print("\n" + "=" * 70)
     print("FINAL SUMMARY")
     print("=" * 70)
-    print(f"Total time elapsed: {total_time:.1f} seconds ({total_time / 60:.1f} minutes)")
+    print(
+        f"Total time elapsed: {total_time:.1f} seconds ({total_time / 60:.1f} minutes)"
+    )
     print(f"Successful simulations: {successful_runs} / {total_runs}")
     print(f"Success rate: {100 * successful_runs / total_runs:.1f}%")
     print(f"Output files saved to: {OUTPUT_DIR}")

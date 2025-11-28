@@ -2,8 +2,8 @@ import os
 from time import time
 
 # Fix MPI/OFI finalization errors on macOS
-os.environ['FI_PROVIDER'] = 'tcp'
-os.environ['MPICH_OFI_STARTUP_CONNECT'] = '0'
+os.environ["FI_PROVIDER"] = "tcp"
+os.environ["MPICH_OFI_STARTUP_CONNECT"] = "0"
 
 import numpy as np
 import pandas
@@ -46,7 +46,7 @@ msh = mesh.create_unit_square(MPI.COMM_WORLD, nx, ny, mesh.CellType.triangle)
 
 # CH
 ell = 0.025
-gamma = 8
+gamma = 1
 mobility = 1
 doublewell = chb.energies.SymmetricDoubleWellPotential_cutoff()
 
@@ -72,7 +72,7 @@ compressibility = chb.flow.NonlinearCompressibility(
 )
 
 # Time discretization
-dt = 1.0e-3
+dt = 1.0e-5
 num_time_steps = 100
 T = dt * num_time_steps
 
@@ -332,7 +332,7 @@ for i in range(num_time_steps):
         u_n, theta_n, p_n = xiB_n.split()
 
         increment_split = chb.util.l2norm_3(pf - pf_prev, u_n - u_prev, p_n - p_prev)
-        print(f"Increment norm at time step {i} splitting step {j}: {increment_split}")
+        # print(f"Increment norm at time step {i} splitting step {j}: {increment_split}")
 
         if increment_split < tol_split:
             break
@@ -353,6 +353,10 @@ for i in range(num_time_steps):
     energy_int = assemble_scalar(form(energy_int_form))
     energy_el = assemble_scalar(form(energy_el_form))
     energy_fl = assemble_scalar(form(energy_fl_form))
+
+    print(
+        f"Total energy at time step {i} is {energy:.2f}. Interface: {energy_int:.2f}. Fluid: {energy_fl:.2f}. Elastic: {energy_el:.2f}."
+    )
 
     t_vec.append(tpost)
     energy_vec.append(energy)

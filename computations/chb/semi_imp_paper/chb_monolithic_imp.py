@@ -33,7 +33,7 @@ msh = mesh.create_unit_square(MPI.COMM_WORLD, nx, ny, mesh.CellType.triangle)
 
 # CH
 ell = 0.025
-gamma = 8
+gamma = 1
 mobility = 1
 doublewell = chb.energies.SymmetricDoubleWellPotential_cutoff()
 
@@ -47,7 +47,7 @@ interpolator = chb.interpolate.SymmetricStandardInterpolator()
 stiffness_tensor = chb.elasticity.HeterogeneousStiffnessTensor(
     interpolator=interpolator
 )
-swelling = chb.elasticity.Swelling(swelling_parameter=0.5, pf_ref=0)
+swelling = chb.elasticity.Swelling(swelling_parameter=1, pf_ref=0)
 
 # Biot
 alpha = chb.biot.NonlinearBiotCoupling(alpha0=1, alpha1=0.1, interpolator=interpolator)
