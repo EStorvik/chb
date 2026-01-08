@@ -32,7 +32,7 @@ class CrossSymmetric:
         values = np.ones(x.shape[1])
         # Define the width of the cross
         cross_width = self.width
-        # Set value 1 for the cross embedded inside the unit square
+        # Set value -1 for the cross embedded inside the unit square
         values[
             np.logical_or(
                 np.logical_and(
