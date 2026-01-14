@@ -163,3 +163,10 @@ output/
 
 # DS_Store
 **/.DS_Store
+
+# images
+*.png
+*.pdf
+
+
+

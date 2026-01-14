@@ -8,7 +8,7 @@ class CahnHilliardParameters:
         self.mobility = 1.0
 
         # Time Discretization
-        self.dt = 1.0e-5
+        self.dt = 1.0e-1
         self.num_time_steps = 5
         self.T = self.dt * self.num_time_steps
 

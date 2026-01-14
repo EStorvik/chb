@@ -5,6 +5,8 @@ from time import time
 os.environ["FI_PROVIDER"] = "tcp"
 os.environ["MPICH_OFI_STARTUP_CONNECT"] = "0"
 
+import matplotlib.pyplot as plt
+
 import numpy as np
 import pandas
 from basix.ufl import element, mixed_element
@@ -57,10 +59,40 @@ doublewell = chb.energies.SymmetricDoubleWellPotential_cutoff()
 # )
 # heterogeneous and anisotropic stiffness tensor
 interpolator = chb.interpolate.SymmetricStandardInterpolator()
+
+
+# dim = 2
+# stiffness0np = np.zeros((dim, dim, dim, dim))
+
+# stiffness0np[0, 0, 0, 0] = 100
+# stiffness0np[0, 0, 1, 1] = 20
+# stiffness0np[0, 0, 1, 0] = 0
+# stiffness0np[0, 0, 0, 1] = 0
+
+# stiffness0np[1, 1, 0, 0] = 20
+# stiffness0np[1, 1, 1, 1] = 100
+# stiffness0np[1, 1, 1, 0] = 0
+# stiffness0np[1, 1, 0, 1] = 0
+
+# stiffness0np[0, 1, 0, 0] = 0
+# stiffness0np[0, 1, 1, 1] = 0
+# stiffness0np[0, 1, 1, 0] = 100
+# stiffness0np[0, 1, 0, 1] = 100
+
+# stiffness0np[1, 0, 0, 0] = 0
+# stiffness0np[1, 0, 1, 1] = 0
+# stiffness0np[1, 0, 1, 0] = 100
+# stiffness0np[1, 0, 0, 1] = 100
+
+# stiffness_tensor = chb.elasticity.HeterogeneousStiffnessTensor(stiffness1=stiffness0np, stiffness0=stiffness0np,
+#     interpolator=interpolator
+# )
+
 stiffness_tensor = chb.elasticity.HeterogeneousStiffnessTensor(
     interpolator=interpolator
 )
-swelling = chb.elasticity.Swelling(swelling_parameter=0.5, pf_ref=0.0)
+
+swelling = chb.elasticity.Swelling(swelling_parameter=1, pf_ref=0.0)
 
 # Biot
 alpha = chb.biot.NonlinearBiotCoupling(alpha0=1, alpha1=0.1, interpolator=interpolator)
@@ -72,7 +104,7 @@ compressibility = chb.flow.NonlinearCompressibility(
 )
 
 # Time discretization
-dt = 1.0e-5
+dt = 1.0e-6
 num_time_steps = 100
 T = dt * num_time_steps
 
@@ -358,7 +390,7 @@ for i in range(num_time_steps):
         f"Total energy at time step {i} is {energy:.2f}. Interface: {energy_int:.2f}. Fluid: {energy_fl:.2f}. Elastic: {energy_el:.2f}."
     )
 
-    t_vec.append(tpost)
+    t_vec.append(i)
     energy_vec.append(energy)
     energy_int_vec.append(energy_int)
     energy_el_vec.append(energy_el)
@@ -405,14 +437,17 @@ except ImportError:
     print("Install openpyxl with: pip install openpyxl")
 
 # Plot Total Energy
-# plt.figure(figsize=(10, 6))
-# plt.plot(t_vec, energy_vec, 'r-', linewidth=2, label="Total energy")
-# plt.xlabel('Time')
-# plt.ylabel('Total Energy')
-# plt.title('Total Energy Evolution')
-# plt.legend()
-# plt.grid(True, alpha=0.3)
-# plt.show()
+plt.figure(figsize=(10, 6))
+plt.plot(t_vec, energy_vec, "r-", linewidth=2, label="Total energy")
+plt.plot(t_vec, energy_el_vec, "b-", linewidth=2, label="Elastic energy")
+plt.plot(t_vec, energy_int_vec, "g-", linewidth=2, label="interface energy")
+plt.plot(t_vec, energy_fl_vec, "o-", linewidth=2, label="fluid energy")
+plt.xlabel("Time")
+plt.ylabel("Total Energy")
+plt.title("Total Energy Evolution")
+plt.legend()
+plt.grid(True, alpha=0.3)
+plt.show()
 
 # Plot Interface Energy
 # plt.figure(figsize=(10, 6))

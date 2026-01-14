@@ -95,7 +95,7 @@ class HeterogeneousStiffnessTensor:
             self.stiffness0 = as_tensor(self.stiffness0np)
 
         else:
-            self.stiffness0 = as_tensor(self.stiffness0)
+            self.stiffness0 = as_tensor(stiffness0)
 
         if stiffness1 is None:
             self.stiffness1np = np.zeros((dim, dim, dim, dim))
@@ -148,7 +148,7 @@ class HeterogeneousStiffnessTensor:
             self.stiffness1 = as_tensor(self.stiffness1np)
 
         else:
-            self.stiffness1 = as_tensor(self.stiffness1)
+            self.stiffness1 = as_tensor(stiffness1)
 
     def manual(self, pf):
         """

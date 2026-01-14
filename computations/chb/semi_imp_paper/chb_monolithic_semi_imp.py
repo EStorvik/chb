@@ -57,7 +57,7 @@ interpolator = chb.interpolate.SymmetricStandardInterpolator()
 stiffness_tensor = chb.elasticity.HeterogeneousStiffnessTensor(
     interpolator=interpolator
 )
-swelling = chb.elasticity.Swelling(swelling_parameter=1, pf_ref=0)
+swelling = chb.elasticity.Swelling(swelling_parameter=0.25, pf_ref=0)
 
 # Biot
 alpha = chb.biot.NonlinearBiotCoupling(alpha0=1, alpha1=0.1, interpolator=interpolator)
@@ -69,7 +69,7 @@ compressibility = chb.flow.NonlinearCompressibility(
 )
 
 # Time discretization
-dt = 1.0e-5
+dt = 1.0e-6
 num_time_steps = 100
 T = dt * num_time_steps
 
