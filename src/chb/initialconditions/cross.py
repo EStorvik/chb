@@ -24,6 +24,7 @@ class Cross:
         ] = 1.0
         return values
 
+
 class CrossSymmetric:
     def __init__(self, width=0.1):
         self.width = width
