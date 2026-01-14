@@ -18,4 +18,4 @@ $ pip install -e .[dev]
 Use black and flake8 formatting.
 
 ## Citing
-[![DOI](https://zenodo.org/badge/700878796.svg)](https://doi.org/10.5281/zenodo.18244133)
+https://doi.org/10.5281/zenodo.18244133
