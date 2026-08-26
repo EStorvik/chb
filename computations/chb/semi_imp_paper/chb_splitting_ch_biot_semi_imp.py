@@ -48,7 +48,7 @@ msh = mesh.create_unit_square(MPI.COMM_WORLD, nx, ny, mesh.CellType.triangle)
 
 # CH
 ell = 0.025
-gamma = 1
+gamma = 2
 mobility = 1
 doublewell = chb.energies.SymmetricDoubleWellPotential_cutoff()
 
@@ -92,7 +92,7 @@ stiffness_tensor = chb.elasticity.HeterogeneousStiffnessTensor(
     interpolator=interpolator
 )
 
-swelling = chb.elasticity.Swelling(swelling_parameter=1, pf_ref=0.0)
+swelling = chb.elasticity.Swelling(swelling_parameter=0.5, pf_ref=0.0)
 
 # Biot
 alpha = chb.biot.NonlinearBiotCoupling(alpha0=1, alpha1=0.1, interpolator=interpolator)
@@ -297,11 +297,7 @@ solverCH.rtol = 1e-6
 
 # Output file
 filenamepath = "../output/chb_splitting_ch_biot_semi_imp_"
-output_file_pf = XDMFFile(MPI.COMM_WORLD, filenamepath + f"{ell}ell_pf.xdmf", "w")
-output_file_p = XDMFFile(MPI.COMM_WORLD, filenamepath + f"{ell}ell_p.xdmf", "w")
 
-output_file_pf.write_mesh(msh)
-output_file_p.write_mesh(msh)
 
 
 # Energy
@@ -399,10 +395,7 @@ for i in range(num_time_steps):
     times.append(tpost)
 
     # Output
-    pf_out, _ = xiCH.split()
-    output_file_pf.write_function(pf_out, t)
-    _, _, p_out = xiB_n.split()
-    output_file_p.write_function(p_out, t)
+
 
 
 # viz.final_plot(xiCH.sub(0))
@@ -506,5 +499,3 @@ plt.show()
 # plot_along_line(xiCH.sub(0), msh=msh, filename=f"../output/line_data_{ell}ell.npy")
 # plot_along_line(xiB_n.sub(2), msh=msh, filename=f"../output/line_data_{ell}ell.npy")
 
-output_file_pf.close()
-output_file_p.close()

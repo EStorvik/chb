@@ -20,15 +20,15 @@ import shutil
 import subprocess
 import time
 from pathlib import Path
-
+import sys
 import pandas as pd
 
 # Configuration
-SWELLING_VALUES = [0.0625, 0.125, 0.25, 0.5, 1]
+SWELLING_VALUES = [0.0625, 0.125, 0.25, 0.5]
 FIXED_GAMMA = 1  # Fixed gamma value for this study
 SCRIPT_DIR = Path(__file__).parent
 OUTPUT_DIR = SCRIPT_DIR / "../output/log"
-PYTHON_EXECUTABLE = "/Users/erlend/miniforge3/envs/fenicsx-env/bin/python"
+PYTHON_EXECUTABLE = sys.executable
 
 # List of simulation scripts to run
 SIMULATION_SCRIPTS = [
@@ -168,7 +168,7 @@ def run_simulation(script_path: Path) -> bool:
                 or "OFI poll failed" in stderr_output
             ):
                 # Check if output files were still generated (simulation likely succeeded)
-                expected_outputs = ["../output/log/" + script_path.stem + ".xlsx"]
+                expected_outputs = ["../output/log/" + script_path.stem + ".csv"]
                 output_exists = any(
                     Path(script_path.parent / output).exists()
                     for output in expected_outputs
@@ -218,12 +218,12 @@ def rename_output_files(swelling_value: float) -> None:
 
         # Expected output files based on the script patterns
         output_files = [
-            "chb_monolithic_semi_imp.xlsx",
-            "chb_monolithic_imp.xlsx",
-            "chb_splitting_ch_biot_semi_imp.xlsx",
-            "chb_splitting_ch_biot_imp.xlsx",
-            "chb_splitting_ch_fixedstress_semi_imp.xlsx",
-            "chb_splitting_ch_fixedstress_imp.xlsx",  # Correct filename for fixed_stress_imp
+            "chb_monolithic_semi_imp.csv",
+            "chb_monolithic_imp.csv",
+            "chb_splitting_ch_biot_semi_imp.csv",
+            "chb_splitting_ch_biot_imp.csv",
+            "chb_splitting_ch_fixedstress_semi_imp.csv",
+            "chb_splitting_ch_fixedstress_imp.csv",
         ]
 
         for filename in output_files:
@@ -231,19 +231,12 @@ def rename_output_files(swelling_value: float) -> None:
             if old_path.exists():
                 # Create new filename with swelling_parameter value
                 name_stem = old_path.stem
-                new_filename = f"{name_stem}_swelling_{swelling_value}.xlsx"
+                new_filename = f"{name_stem}_swelling_{swelling_value}.csv"
                 new_path = OUTPUT_DIR / new_filename
 
                 # Rename/move the file
                 shutil.move(str(old_path), str(new_path))
                 print(f"    Renamed {filename} → {new_filename}")
-
-                # Also handle CSV files if they exist
-                csv_old = old_path.with_suffix(".csv")
-                if csv_old.exists():
-                    csv_new = new_path.with_suffix(".csv")
-                    shutil.move(str(csv_old), str(csv_new))
-                    print(f"    Renamed {csv_old.name} → {csv_new.name}")
 
     except Exception as e:
         print(f"    ✗ Error renaming output files: {e}")

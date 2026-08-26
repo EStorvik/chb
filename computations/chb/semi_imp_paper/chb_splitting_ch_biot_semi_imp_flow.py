@@ -277,13 +277,6 @@ solverCH.rtol = 1e-6
 
 # Output file
 filenamepath = "../output/flow_through_cross"
-output_file_pf = XDMFFile(MPI.COMM_WORLD, filenamepath + f"{ell}ell_pf.xdmf", "w")
-output_file_p = XDMFFile(MPI.COMM_WORLD, filenamepath + f"{ell}ell_p.xdmf", "w")
-output_file_theta = XDMFFile(MPI.COMM_WORLD, filenamepath + f"{ell}ell_theta.xdmf", "w")
-
-output_file_pf.write_mesh(msh)
-output_file_p.write_mesh(msh)
-output_file_theta.write_mesh(msh)
 
 
 # Energy
@@ -377,11 +370,7 @@ for i in range(num_time_steps):
     times.append(tpost)
 
     # Output
-    pf_out, _ = xiCH.split()
-    output_file_pf.write_function(pf_out, t)
-    _, theta_out, p_out = xiB_n.split()
-    output_file_p.write_function(p_out, t)
-    output_file_theta.write_function(theta_out, t)
+
 
 
 # viz.final_plot(xiCH.sub(0))
@@ -481,7 +470,3 @@ for i in range(num_time_steps):
 
 # plot_along_line(xiCH.sub(0), msh=msh, filename=f"../output/line_data_{ell}ell.npy")
 # plot_along_line(xiB_n.sub(2), msh=msh, filename=f"../output/line_data_{ell}ell.npy")
-
-output_file_pf.close()
-output_file_p.close()
-output_file_theta.close()

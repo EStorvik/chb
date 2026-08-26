@@ -33,7 +33,7 @@ msh = mesh.create_unit_square(MPI.COMM_WORLD, nx, ny, mesh.CellType.triangle)
 
 # CH
 ell = 0.025
-gamma = 1
+gamma = 2
 mobility = 1
 doublewell = chb.energies.SymmetricDoubleWellPotential_cutoff()
 
@@ -47,7 +47,7 @@ interpolator = chb.interpolate.SymmetricStandardInterpolator()
 stiffness_tensor = chb.elasticity.HeterogeneousStiffnessTensor(
     interpolator=interpolator
 )
-swelling = chb.elasticity.Swelling(swelling_parameter=1, pf_ref=0)
+swelling = chb.elasticity.Swelling(swelling_parameter=0.5, pf_ref=0)
 
 # Biot
 alpha = chb.biot.NonlinearBiotCoupling(alpha0=1, alpha1=0.1, interpolator=interpolator)
@@ -64,7 +64,7 @@ num_time_steps = 100
 T = dt * num_time_steps
 
 # Nonlinear iteration parameters
-max_iter = 20
+max_iter = 100
 tol = 1e-6
 
 
@@ -219,12 +219,6 @@ solver.rtol = 1e-6
 # viz = chb.visualization.PyvistaVizualization(V.sub(0), xi.sub(0), 0.0)
 
 # Output file
-filenamepath = "../output/chb_monolithic_imp_"
-output_file_pf = XDMFFile(MPI.COMM_WORLD, filenamepath + f"{ell}ell_pf.xdmf", "w")
-output_file_p = XDMFFile(MPI.COMM_WORLD, filenamepath + f"{ell}ell_p.xdmf", "w")
-
-output_file_pf.write_mesh(msh)
-output_file_p.write_mesh(msh)
 
 
 # Energy
@@ -299,8 +293,7 @@ for i in range(num_time_steps):
 
     # Output
     pf_out, _, _, _, p_out = xi.split()
-    output_file_pf.write_function(pf_out, t)
-    output_file_p.write_function(p_out, t)
+
 
 
 # viz.final_plot(xi.sub(0))
@@ -399,5 +392,4 @@ except ImportError:
 
 # plot_along_line(xi.sub(0), msh=msh, filename=f"../output/line_data_{ell}ell.npy")
 
-output_file_pf.close()
-output_file_p.close()
+
