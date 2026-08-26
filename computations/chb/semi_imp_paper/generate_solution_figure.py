@@ -8,7 +8,6 @@ os.environ["MPICH_OFI_STARTUP_CONNECT"] = "0"
 import matplotlib.pyplot as plt
 
 import numpy as np
-import pandas
 from basix.ufl import element, mixed_element
 from dolfinx import mesh
 from dolfinx.fem import (
@@ -306,7 +305,6 @@ for i in range(num_time_steps):
     xiCH_old.x.scatter_forward()
     xiB_old.x.array[:] = xiB_n.x.array
     xiB_old.x.scatter_forward()
-
     # Update current time
     t += dt
     iteration = 0
@@ -321,7 +319,8 @@ for i in range(num_time_steps):
 
         # Solve the non-linear problems
         nCH, convergedCH = solverCH.solve(xiCH)
-        xiB_n = problemB.solve()
+        xiB_n_temp = problemB.solve()
+        xiB_n.x.array[:] = xiB_n_temp.x.array
         xiB_n.x.scatter_forward()
         u_n, theta_n, p_n = xiB_n.split()
 
@@ -332,9 +331,7 @@ for i in range(num_time_steps):
             break
 
     tpost = time() - tpre
-    # Update the plot window
-    # viz.update(xiCH.sub(0), t)
-    # vizP.update(xiB_n.sub(2), t)
+
 
     energy_total = energyTotal(pf, u_n, theta_n, dx=Measure("dx", domain=msh))
     energy = assemble_scalar(form(energy_total))
@@ -365,7 +362,7 @@ for i in range(num_time_steps):
     output_file_pf.write_function(pf_out, t)
     u_out, _, p_out = xiB_n.split()
     output_file_p.write_function(p_out, t)
-    output_file_u.write_function(u, t)
+    output_file_u.write_function(u_out, t)
 
 
 

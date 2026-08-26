@@ -6,9 +6,10 @@ Run parametric study over gamma values for all semi_implicit CHB simulations.
 
 This script will:
 1. Modify gamma parameter in each simulation file
-2. Run the simulation
-3. Rename output files to include gamma value
-4. Repeat for all gamma values in the study
+2. Enforce fixed swelling parameter = 0.5 in each simulation file
+3. Run the simulation
+4. Rename output files to include gamma value
+5. Repeat for all gamma values in the study
 
 Author: Auto-generated script for CHB gamma study
 """
@@ -16,14 +17,16 @@ Author: Auto-generated script for CHB gamma study
 import re
 import shutil
 import subprocess
+import sys
 import time
 from pathlib import Path
 
 # Configuration
-GAMMA_VALUES = [0.25, 0.5, 1, 2, 4, 8]
+GAMMA_VALUES = [0.25, 0.5, 1, 2, 4]
+SWELLING_PARAMETER = 0.5  # Fixed swelling parameter for all simulations
 SCRIPT_DIR = Path(__file__).parent
 OUTPUT_DIR = SCRIPT_DIR / "../output/log"
-PYTHON_EXECUTABLE = "/Users/erlend/miniforge3/envs/fenicsx-env/bin/python"
+PYTHON_EXECUTABLE = sys.executable  # Use the same Python that's running this script
 
 # List of simulation scripts to run
 SIMULATION_SCRIPTS = [
@@ -72,6 +75,45 @@ def modify_gamma_parameter(script_path: Path, gamma_value: float) -> bool:
 
     except Exception as e:
         print(f"  ✗ Error modifying {script_path.name}: {e}")
+        return False
+
+
+def modify_swelling_parameter(script_path: Path, swelling_value: float) -> bool:
+    """
+    Modify the swelling parameter in a simulation script.
+
+    Args:
+        script_path: Path to the simulation script
+        swelling_value: New swelling parameter value to set
+
+    Returns:
+        True if modification was successful, False otherwise
+    """
+    try:
+        # Read the file
+        with open(script_path, "r") as f:
+            content = f.read()
+
+        # Find and replace swelling parameter
+        # Pattern matches: swelling_parameter=<number> (in function call)
+        pattern = r"swelling_parameter\s*=\s*[0-9]+\.?[0-9]*"
+        new_swelling = f"swelling_parameter={swelling_value}"
+
+        if re.search(pattern, content):
+            content = re.sub(pattern, new_swelling, content)
+
+            # Write back to file
+            with open(script_path, "w") as f:
+                f.write(content)
+
+            print(f"  ✓ Updated swelling_parameter = {swelling_value} in {script_path.name}")
+            return True
+        else:
+            print(f"  ⚠ Could not find swelling_parameter in {script_path.name}")
+            return False
+
+    except Exception as e:
+        print(f"  ✗ Error modifying swelling in {script_path.name}: {e}")
         return False
 
 
@@ -129,12 +171,12 @@ def rename_output_files(gamma_value: float) -> None:
 
         # Expected output files based on the script patterns
         output_files = [
-            "chb_monolithic_semi_imp.xlsx",
-            "chb_monolithic_imp.xlsx",
-            "chb_splitting_ch_biot_semi_imp.xlsx",
-            "chb_splitting_ch_biot_imp.xlsx",
-            "chb_splitting_ch_fixedstress_semi_imp.xlsx",
-            "chb_splitting_ch_fixedstress_imp.xlsx",  # Correct filename for fixed_stress_imp
+            "chb_monolithic_semi_imp.csv",
+            "chb_monolithic_imp.csv",
+            "chb_splitting_ch_biot_semi_imp.csv",
+            "chb_splitting_ch_biot_imp.csv",
+            "chb_splitting_ch_fixedstress_semi_imp.csv",
+            "chb_splitting_ch_fixedstress_imp.csv",
         ]
 
         for filename in output_files:
@@ -142,19 +184,12 @@ def rename_output_files(gamma_value: float) -> None:
             if old_path.exists():
                 # Create new filename with gamma value
                 name_stem = old_path.stem
-                new_filename = f"{name_stem}_gamma_{gamma_value}.xlsx"
+                new_filename = f"{name_stem}_gamma_{gamma_value}.csv"
                 new_path = OUTPUT_DIR / new_filename
 
                 # Rename/move the file
                 shutil.move(str(old_path), str(new_path))
                 print(f"    Renamed {filename} → {new_filename}")
-
-                # Also handle CSV files if they exist
-                csv_old = old_path.with_suffix(".csv")
-                if csv_old.exists():
-                    csv_new = new_path.with_suffix(".csv")
-                    shutil.move(str(csv_old), str(csv_new))
-                    print(f"    Renamed {csv_old.name} → {csv_new.name}")
 
     except Exception as e:
         print(f"    ✗ Error renaming output files: {e}")
@@ -166,6 +201,7 @@ def main():
     print("CHB Gamma Parameter Study - Automated Simulation Runner")
     print("=" * 70)
     print(f"Gamma values: {GAMMA_VALUES}")
+    print(f"Fixed swelling parameter: {SWELLING_PARAMETER}")
     print(f"Scripts to run: {len(SIMULATION_SCRIPTS)}")
     total_sims = len(GAMMA_VALUES) * len(SIMULATION_SCRIPTS)
     print(
@@ -211,7 +247,12 @@ def main():
             print(f"  [{j}/{len(SIMULATION_SCRIPTS)}] {script_name}")
 
             # Modify gamma parameter
-            if modify_gamma_parameter(script_path, gamma):
+            gamma_modified = modify_gamma_parameter(script_path, gamma)
+
+            # Enforce fixed swelling parameter
+            swelling_modified = modify_swelling_parameter(script_path, SWELLING_PARAMETER)
+
+            if gamma_modified:
                 # Run simulation
                 if run_simulation(script_path):
                     successful_runs += 1
