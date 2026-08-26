@@ -1,0 +1,34 @@
+name: chb
+channels:
+  - conda-forge
+dependencies:
+  # FEniCSx v0.9
+  - fenics-dolfinx=0.9.*
+  - fenics-basix=0.9.*
+  - fenics-ffcx=0.9.*
+  - fenics-ufl=2024.2.*
+
+  # Core scientific computing
+  - python>=3.10
+  - numpy
+  - scipy
+  - matplotlib
+  - pandas
+  - openpyxl
+
+  # Development tools
+  - pytest>=7.1
+  - black
+  - isort
+  - flake8
+  - mypy
+  - meshio
+  - deepdiff
+  - pyamg
+
+  # Additional useful packages
+  - pip
+
+  # Install the chb package itself via pip
+  - pip:
+    - -e .
