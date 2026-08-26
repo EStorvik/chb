@@ -74,12 +74,12 @@ compressibility = chb.flow.NonlinearCompressibility(
 )
 
 # Time discretization
-dt = 1.0e-5
-num_time_steps = 80
+dt = 1.0e-3
+num_time_steps = 100
 T = dt * num_time_steps
 
 # Splitting iteration parameters
-max_iter_split = 20
+max_iter_split = 100
 tol_split = 1e-6
 
 

@@ -46,7 +46,7 @@ msh = mesh.create_unit_square(MPI.COMM_WORLD, nx, ny, mesh.CellType.triangle)
 
 # CH
 ell = 0.025
-gamma = 2
+gamma = 1
 mobility = 1
 doublewell = chb.energies.SymmetricDoubleWellPotential_cutoff()
 
@@ -79,7 +79,7 @@ num_time_steps = 100
 T = dt * num_time_steps
 
 # Splitting iteration parameters
-max_iter_split = 20
+max_iter_split = 100
 tol_split = 1e-6
 
 
