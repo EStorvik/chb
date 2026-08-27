@@ -48,7 +48,7 @@ msh = mesh.create_unit_square(MPI.COMM_WORLD, nx, ny, mesh.CellType.triangle)
 
 # CH
 ell = 0.025
-gamma = 2
+gamma = 0.5
 mobility = 1
 doublewell = chb.energies.SymmetricDoubleWellPotential_cutoff()
 
