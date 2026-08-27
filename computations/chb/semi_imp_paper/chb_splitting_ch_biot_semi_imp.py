@@ -48,7 +48,7 @@ msh = mesh.create_unit_square(MPI.COMM_WORLD, nx, ny, mesh.CellType.triangle)
 
 # CH
 ell = 0.025
-gamma = 0.5
+gamma = 0.25
 mobility = 1
 doublewell = chb.energies.SymmetricDoubleWellPotential_cutoff()
 
@@ -430,17 +430,7 @@ except ImportError:
     print("Install openpyxl with: pip install openpyxl")
 
 # Plot Total Energy
-plt.figure(figsize=(10, 6))
-plt.plot(t_vec, energy_vec, "r-", linewidth=2, label="Total energy")
-plt.plot(t_vec, energy_el_vec, "b-", linewidth=2, label="Elastic energy")
-plt.plot(t_vec, energy_int_vec, "g-", linewidth=2, label="interface energy")
-plt.plot(t_vec, energy_fl_vec, "o-", linewidth=2, label="fluid energy")
-plt.xlabel("Time")
-plt.ylabel("Total Energy")
-plt.title("Total Energy Evolution")
-plt.legend()
-plt.grid(True, alpha=0.3)
-plt.show()
+#
 
 # Plot Interface Energy
 # plt.figure(figsize=(10, 6))
