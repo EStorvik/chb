@@ -264,7 +264,6 @@ output_file_p.write_mesh(msh)
 output_file_u.write_mesh(msh)
 
 
-
 # Energy
 def energy_i(pf, dx):
     return gamma * (1 / ell * doublewell(pf) + ell / 2 * inner(grad(pf), grad(pf))) * dx
@@ -332,7 +331,6 @@ for i in range(num_time_steps):
 
     tpost = time() - tpre
 
-
     energy_total = energyTotal(pf, u_n, theta_n, dx=Measure("dx", domain=msh))
     energy = assemble_scalar(form(energy_total))
 
@@ -363,8 +361,6 @@ for i in range(num_time_steps):
     u_out, _, p_out = xiB_n.split()
     output_file_p.write_function(p_out, t)
     output_file_u.write_function(u_out, t)
-
-
 
 
 output_file_pf.close()

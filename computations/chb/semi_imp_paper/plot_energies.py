@@ -1,7 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-
 path = "../output/log/chb_splitting_ch_biot_"
 si = "semi_imp_"
 imp = "imp_"

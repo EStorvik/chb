@@ -106,7 +106,9 @@ def modify_swelling_parameter(script_path: Path, swelling_value: float) -> bool:
             with open(script_path, "w") as f:
                 f.write(content)
 
-            print(f"  ✓ Updated swelling_parameter = {swelling_value} in {script_path.name}")
+            print(
+                f"  ✓ Updated swelling_parameter = {swelling_value} in {script_path.name}"
+            )
             return True
         else:
             print(f"  ⚠ Could not find swelling_parameter in {script_path.name}")
@@ -250,7 +252,9 @@ def main():
             gamma_modified = modify_gamma_parameter(script_path, gamma)
 
             # Enforce fixed swelling parameter
-            swelling_modified = modify_swelling_parameter(script_path, SWELLING_PARAMETER)
+            swelling_modified = modify_swelling_parameter(
+                script_path, SWELLING_PARAMETER
+            )
 
             if gamma_modified:
                 # Run simulation

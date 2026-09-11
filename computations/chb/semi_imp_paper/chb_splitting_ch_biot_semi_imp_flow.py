@@ -42,6 +42,7 @@ import chb
 
 parameters = chb.Parameters()
 
+
 def splitting_ch_biot_semiimp(parameters):
 
     nx = parameters.nx
@@ -69,12 +70,16 @@ def splitting_ch_biot_semiimp(parameters):
     swelling = chb.elasticity.Swelling(swelling_parameter=parameters.swelling, pf_ref=0)
 
     # Biot
-    alpha = chb.biot.NonlinearBiotCoupling(alpha0=parameters.alpha_0, alpha1=parameters.alpha_1, interpolator=interpolator)
+    alpha = chb.biot.NonlinearBiotCoupling(
+        alpha0=parameters.alpha_0, alpha1=parameters.alpha_1, interpolator=interpolator
+    )
 
     # Flow
     permeability = parameters.permeability
     compressibility = chb.flow.NonlinearCompressibility(
-        M0=parameters.compressibility_0, M1=parameters.compressibility_1, interpolator=interpolator
+        M0=parameters.compressibility_0,
+        M1=parameters.compressibility_1,
+        interpolator=interpolator,
     )
 
     # Time discretization
@@ -85,7 +90,6 @@ def splitting_ch_biot_semiimp(parameters):
     # Nonlinear iteration parameters
     max_iter_split = parameters.max_iter
     tol = parameters.tol
-
 
     # Finite elements
     P1 = element("Lagrange", msh.basix_cell(), 1)
@@ -121,7 +125,6 @@ def splitting_ch_biot_semiimp(parameters):
     xiB_prev = Function(Vb)
     u_prev, theta_prev, p_prev = split(xiB_prev)
 
-
     # Initial condtions
     initialcondition = chb.initialconditions.CrossSymmetric(width=0.3)
     # initialcondition = chb.initialconditions.symmetrichalfnhalf
@@ -135,7 +138,6 @@ def splitting_ch_biot_semiimp(parameters):
     xiB_n.x.scatter_forward()
     u_n, theta_n, p_n = split(xiB_n)
 
-
     # Boundary conditions
     def boundary(x):
         return np.logical_or(
@@ -143,20 +145,19 @@ def splitting_ch_biot_semiimp(parameters):
             np.logical_or(np.isclose(x[1], 0.0), np.isclose(x[1], 1.0)),
         )
 
-
     def boundary_left(x):
         return np.isclose(x[0], 0.0)
 
-
     def boundary_right(x):
         return np.isclose(x[0], 1.0)
-
 
     V_u = Vb.sub(0)
     V_p = Vb.sub(2)
     facets = mesh.locate_entities_boundary(msh, msh.topology.dim - 1, boundary)
     # facets_left = mesh.locate_entities_boundary(msh, msh.topology.dim -1, boundary_left)
-    facets_right = mesh.locate_entities_boundary(msh, msh.topology.dim - 1, boundary_right)
+    facets_right = mesh.locate_entities_boundary(
+        msh, msh.topology.dim - 1, boundary_right
+    )
     dofs_u = locate_dofs_topological(V_u, msh.topology.dim - 1, facets)
     # dofs_p = locate_dofs_topological(V_p, msh.topology.dim - 1, facets)
     # dofs_p_left = locate_dofs_topological(V_p, msh.topology.dim - 1, facets_left)
@@ -176,20 +177,19 @@ def splitting_ch_biot_semiimp(parameters):
     p_bc_right.interpolate(lambda x: np.zeros((1, x.shape[1])))
     bc_p = dirichletbc(p_bc_right, dofs_p_right)
 
-
     # Neumann condition function for flow
 
     V_g = functionspace(msh, ("Lagrange", 1))
     g = Function(V_g)
     g.interpolate(lambda x: np.where((x[1] > 0.01) & (x[1] < 0.99), 1.0, 0.0))
 
-
     # bc_p_left = dirichletbc(p_bc_left, dofs_p_left)
     # bc_p_right = dirichletbc(p_bc_right, dofs_p_right)
 
     # Linear variational forms
     F_pf = (
-        inner(pf - pf_old, eta_pf) * dx + dt * mobility * inner(grad(mu), grad(eta_pf)) * dx
+        inner(pf - pf_old, eta_pf) * dx
+        + dt * mobility * inner(grad(mu), grad(eta_pf)) * dx
     )
 
     F_mu = (
@@ -259,7 +259,6 @@ def splitting_ch_biot_semiimp(parameters):
     Fch = F_pf + F_mu
     Fb = F_u + F_theta + F_p
 
-
     # Set up non-linear problems
     problemCH = NonlinearProblem(Fch, xiCH, bcs=[])
 
@@ -282,11 +281,13 @@ def splitting_ch_biot_semiimp(parameters):
     # Output file
     filenamepath = "../output/flow_through_cross"
 
-
     # Energy
     def energy_i(pf, dx):
-        return gamma * (1 / ell * doublewell(pf) + ell / 2 * inner(grad(pf), grad(pf))) * dx
-
+        return (
+            gamma
+            * (1 / ell * doublewell(pf) + ell / 2 * inner(grad(pf), grad(pf)))
+            * dx
+        )
 
     def energy_e(pf, u, dx):
         return (
@@ -298,14 +299,11 @@ def splitting_ch_biot_semiimp(parameters):
             * dx
         )
 
-
     def energy_f(pf, u, theta, dx):
         return 0.5 * compressibility(pf) * (theta - alpha(pf) * div(u)) ** 2 * dx
 
-
     def energyTotal(pf, u, theta, dx):
         return energy_i(pf, dx) + energy_e(pf, u, dx) + energy_f(pf, u, theta, dx)
-
 
     t_vec = []
     energy_vec = []
@@ -342,7 +340,9 @@ def splitting_ch_biot_semiimp(parameters):
             xiB_n.x.scatter_forward()
             u_n, theta_n, p_n = xiB_n.split()
 
-            increment_split = chb.util.l2norm_3(pf - pf_prev, u_n - u_prev, p_n - p_prev)
+            increment_split = chb.util.l2norm_3(
+                pf - pf_prev, u_n - u_prev, p_n - p_prev
+            )
             # print(f"Increment norm at time step {i} splitting step {j}: {increment_split}")
 
             if increment_split < tol:
@@ -374,8 +374,6 @@ def splitting_ch_biot_semiimp(parameters):
         times.append(tpost)
 
         # Output
-
-
 
     # viz.final_plot(xiCH.sub(0))
     # vizP.final_plot(xiB_n.sub(2))

@@ -67,12 +67,16 @@ def splitting_ch_fs_semiimp(parameters):
     swelling = chb.elasticity.Swelling(swelling_parameter=parameters.swelling, pf_ref=0)
 
     # Biot
-    alpha = chb.biot.NonlinearBiotCoupling(alpha0=parameters.alpha_0, alpha1=parameters.alpha_1, interpolator=interpolator)
+    alpha = chb.biot.NonlinearBiotCoupling(
+        alpha0=parameters.alpha_0, alpha1=parameters.alpha_1, interpolator=interpolator
+    )
 
     # Flow
     permeability = parameters.permeability
     compressibility = chb.flow.NonlinearCompressibility(
-        M0=parameters.compressibility_0, M1=parameters.compressibility_1, interpolator=interpolator
+        M0=parameters.compressibility_0,
+        M1=parameters.compressibility_1,
+        interpolator=interpolator,
     )
 
     # Time discretization
@@ -84,7 +88,6 @@ def splitting_ch_fs_semiimp(parameters):
     max_iter_split = parameters.max_iter
     tol = parameters.tol
     L = parameters.L
-
 
     # Finite elements
     P1 = element("Lagrange", msh.basix_cell(), 1)
@@ -127,7 +130,6 @@ def splitting_ch_fs_semiimp(parameters):
     xiF_prev = Function(Vf)
     theta_prev, p_prev = split(xiF_prev)
 
-
     # Initial condtions
     # initialcondition_cross = chb.initialconditions.Cross(width = 0.3)
     initialcondition = chb.initialconditions.symmetrichalfnhalf
@@ -141,7 +143,6 @@ def splitting_ch_fs_semiimp(parameters):
     xiF_n.x.scatter_forward()
     theta_n, p_n = split(xiF_n)
 
-
     # Boundary conditions
     def boundary(x):
         return np.logical_or(
@@ -149,14 +150,11 @@ def splitting_ch_fs_semiimp(parameters):
             np.logical_or(np.isclose(x[1], 0.0), np.isclose(x[1], 1.0)),
         )
 
-
     def boundary_left(x):
         return np.isclose(x[0], 0.0)
 
-
     def boundary_right(x):
         return np.isclose(x[0], 1.0)
-
 
     # V_p = Vb.sub(2)
     facets = mesh.locate_entities_boundary(msh, msh.topology.dim - 1, boundary)
@@ -185,7 +183,8 @@ def splitting_ch_fs_semiimp(parameters):
 
     # Linear variational forms
     F_pf = (
-        inner(pf - pf_old, eta_pf) * dx + dt * mobility * inner(grad(mu), grad(eta_pf)) * dx
+        inner(pf - pf_old, eta_pf) * dx
+        + dt * mobility * inner(grad(mu), grad(eta_pf)) * dx
     )
 
     F_mu = (
@@ -283,12 +282,13 @@ def splitting_ch_fs_semiimp(parameters):
     # Output file
     filenamepath = "../output/chb_splitting_ch_fixed_stress_semi_imp_"
 
-
-
     # Energy
     def energy_i(pf, dx):
-        return gamma * (1 / ell * doublewell(pf) + ell / 2 * inner(grad(pf), grad(pf))) * dx
-
+        return (
+            gamma
+            * (1 / ell * doublewell(pf) + ell / 2 * inner(grad(pf), grad(pf)))
+            * dx
+        )
 
     def energy_e(pf, u, dx):
         return (
@@ -300,14 +300,11 @@ def splitting_ch_fs_semiimp(parameters):
             * dx
         )
 
-
     def energy_f(pf, u, theta, dx):
         return 0.5 * compressibility(pf) * (theta - alpha(pf) * div(u)) ** 2 * dx
 
-
     def energyTotal(pf, u, theta, dx):
         return energy_i(pf, dx) + energy_e(pf, u, dx) + energy_f(pf, u, theta, dx)
-
 
     t_vec = []
     energy_vec = []
@@ -358,7 +355,9 @@ def splitting_ch_fs_semiimp(parameters):
                 if increment_fs < tol:
                     break
 
-            increment_split = chb.util.l2norm_3(pf - pf_prev, u_n - u_prev, p_n - p_prev)
+            increment_split = chb.util.l2norm_3(
+                pf - pf_prev, u_n - u_prev, p_n - p_prev
+            )
             # print(f"Increment norm at time step {i} splitting step {j}: {increment_split}")
 
             if increment_split < tol:
@@ -391,8 +390,6 @@ def splitting_ch_fs_semiimp(parameters):
 
         # Output
 
-
-
     # viz.final_plot(xiCH.sub(0))
     # vizP.final_plot(xiB_n.sub(2))
 
@@ -412,7 +409,6 @@ def splitting_ch_fs_semiimp(parameters):
     # log_df = pandas.DataFrame(log_data)
     # log_filenamepath = "../output/log/chb_splitting_ch_fixedstress_semi_imp.xlsx"
 
-
     # os.makedirs(os.path.dirname(log_filenamepath), exist_ok=True)
 
     # try:
@@ -425,6 +421,3 @@ def splitting_ch_fs_semiimp(parameters):
     #     log_df.to_csv(csv_path, index=False)
     #     print(f"Excel writer not available, log data saved to CSV: {csv_path}")
     #     print("Install openpyxl with: pip install openpyxl")
-
-
-

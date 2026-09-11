@@ -2,22 +2,22 @@ class Parameters:
 
     def __init__(
         self,
-        nx = 64,
-        ny = 64,
-        dt = 1e-3,
-        num_time_steps = 100,
-        gamma = 1,
-        ell = 0.025,
-        mobility = 1,
-        swelling = 0.5,
-        permeability = 1,
-        compressibility_0 = 1,
-        compressibility_1 = 0.1,
-        alpha_0 = 1,
-        alpha_1 = 0.1,
-        max_iter = 100,
-        tol = 1e-6,
-        L = 1,
+        nx=64,
+        ny=64,
+        dt=1e-3,
+        num_time_steps=100,
+        gamma=1,
+        ell=0.025,
+        mobility=1,
+        swelling=0.5,
+        permeability=1,
+        compressibility_0=1,
+        compressibility_1=0.1,
+        alpha_0=1,
+        alpha_1=0.1,
+        max_iter=100,
+        tol=1e-6,
+        L=1,
     ):
 
         # Spatial
@@ -49,5 +49,5 @@ class Parameters:
         self.tol = tol
         self.max_iter = max_iter
 
-        #FS
+        # FS
         self.L = L

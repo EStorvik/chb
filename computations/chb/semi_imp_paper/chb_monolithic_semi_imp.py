@@ -36,7 +36,6 @@ from ufl import (
 import chb
 
 
-
 def monolithic_semi_imp(parameters):
 
     nx = parameters.nx
@@ -64,12 +63,16 @@ def monolithic_semi_imp(parameters):
     swelling = chb.elasticity.Swelling(swelling_parameter=parameters.swelling, pf_ref=0)
 
     # Biot
-    alpha = chb.biot.NonlinearBiotCoupling(alpha0=parameters.alpha_0, alpha1=parameters.alpha_1, interpolator=interpolator)
+    alpha = chb.biot.NonlinearBiotCoupling(
+        alpha0=parameters.alpha_0, alpha1=parameters.alpha_1, interpolator=interpolator
+    )
 
     # Flow
     permeability = parameters.permeability
     compressibility = chb.flow.NonlinearCompressibility(
-        M0=parameters.compressibility_0, M1=parameters.compressibility_1, interpolator=interpolator
+        M0=parameters.compressibility_0,
+        M1=parameters.compressibility_1,
+        interpolator=interpolator,
     )
 
     # Time discretization
@@ -80,7 +83,6 @@ def monolithic_semi_imp(parameters):
     # Nonlinear iteration parameters
     max_iter = parameters.max_iter
     tol = parameters.tol
-
 
     # Finite elements
     P1 = element("Lagrange", msh.basix_cell(), 1)
@@ -102,7 +104,6 @@ def monolithic_semi_imp(parameters):
     xi_old = Function(V)
     pf_old, mu_old, u_old, theta_old, p_old = split(xi_old)
 
-
     # Initial condtions
     initialcondition_cross = chb.initialconditions.Cross(width=0.3)
     initialcondition = chb.initialconditions.symmetrichalfnhalf
@@ -113,7 +114,6 @@ def monolithic_semi_imp(parameters):
     xi.sub(4).interpolate(lambda x: np.zeros((1, x.shape[1])))
     xi.x.scatter_forward()
 
-
     # Boundary conditions
     def boundary(x):
         return np.logical_or(
@@ -121,14 +121,11 @@ def monolithic_semi_imp(parameters):
             np.logical_or(np.isclose(x[1], 0.0), np.isclose(x[1], 1.0)),
         )
 
-
     def boundary_left(x):
         return np.isclose(x[0], 0.0)
 
-
     def boundary_right(x):
         return np.isclose(x[0], 1.0)
-
 
     V_u = V.sub(2)
     V_p = V.sub(4)
@@ -158,7 +155,8 @@ def monolithic_semi_imp(parameters):
 
     # Linear variational forms
     F_pf = (
-        inner(pf - pf_old, eta_pf) * dx + dt * mobility * inner(grad(mu), grad(eta_pf)) * dx
+        inner(pf - pf_old, eta_pf) * dx
+        + dt * mobility * inner(grad(mu), grad(eta_pf)) * dx
     )
 
     F_mu = (
@@ -178,7 +176,9 @@ def monolithic_semi_imp(parameters):
                     sym(grad(u_old)) - swelling(pf_old),
                 )
                 - inner(
-                    stiffness_tensor.stress(strain=sym(grad(u)) - swelling(pf), pf=pf_old),
+                    stiffness_tensor.stress(
+                        strain=sym(grad(u)) - swelling(pf), pf=pf_old
+                    ),
                     swelling.prime(),
                 ),
                 eta_mu,
@@ -224,7 +224,6 @@ def monolithic_semi_imp(parameters):
 
     F = F_pf + F_mu + F_u + F_theta + F_p
 
-
     # Set up nonlinear problem
     problem = NonlinearProblem(
         F, xi, bcs=[bc_u]
@@ -242,12 +241,13 @@ def monolithic_semi_imp(parameters):
     # Output file
     filenamepath = "../output/chb_monolithic_semiimp_"
 
-
-
     # Energy
     def energy_i(pf, dx):
-        return gamma * (1 / ell * doublewell(pf) + ell / 2 * inner(grad(pf), grad(pf))) * dx
-
+        return (
+            gamma
+            * (1 / ell * doublewell(pf) + ell / 2 * inner(grad(pf), grad(pf)))
+            * dx
+        )
 
     def energy_e(pf, u, dx):
         return (
@@ -259,14 +259,11 @@ def monolithic_semi_imp(parameters):
             * dx
         )
 
-
     def energy_f(pf, u, theta, dx):
         return 0.5 * compressibility(pf) * (theta - alpha(pf) * div(u)) ** 2 * dx
 
-
     def energyTotal(pf, u, theta, dx):
         return energy_i(pf, dx) + energy_e(pf, u, dx) + energy_f(pf, u, theta, dx)
-
 
     t_vec = []
     energy_int_vec = []
@@ -314,8 +311,6 @@ def monolithic_semi_imp(parameters):
 
         # Output
 
-
-
     # viz.final_plot(xi.sub(0))
 
     # Create log DataFrame and save to Excel
@@ -346,4 +341,3 @@ def monolithic_semi_imp(parameters):
     #     log_df.to_csv(csv_path, index=False)
     #     print(f"Excel writer not available, log data saved to CSV: {csv_path}")
     #     print("Install openpyxl with: pip install openpyxl")
-
