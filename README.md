@@ -30,7 +30,6 @@ pip install -e .[dev]
 
 ## Reproducing figures from paper XXX
 
-CHECK FIRST AND LAST POINT.
 - For reproduction of figure 1 - snapshots from simulation output run the file:
     chb/computations/chb/semi_imp_paper/generate_solution_figure.py
     The outputs will then be stored in
@@ -38,10 +37,12 @@ CHECK FIRST AND LAST POINT.
     and can be opened with paraview to manually create the figures that are in the paper.
 - For reproducing the numbers used to create figure 2 and 3, run the script
     chb/computations/chb/semi_imp_paper/full_study.py
-    CSV-files will then be created (in the same output-folder) that contain the data. For the paper ticks and pgfplots where used to directly create the figures in latex, but matplotlib-production of figures (with very slight color/spacing discrepancies) can be achieved by rinning the plot_study.py script.
-- For reproducing figure 4 run the script (after running the gamma and swelling     studies):
+    CSV-files will then be created (in the same output-folder) that contain the data. For the paper ticks and pgfplots where used to directly create the figures in latex, but matplotlib-production of figures (with very slight color/spacing discrepancies) can be achieved by running the plot_study.py script.
+- For reproducing figure 4, first run the script:
+    chb/computations/chb/semi_imp_paper/generate_energy_data.py
+    This will create two csv-files with energy data thay one can plot using the
+    script:
     chb/computations/chb/semi_imp_paper/plot_energies.py
-
 
 ## Citing
 https://doi.org/10.5281/zenodo.18244133
