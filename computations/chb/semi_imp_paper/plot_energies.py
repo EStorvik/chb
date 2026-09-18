@@ -1,14 +1,12 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
+path = "output/energies_"
+gamma_path = path + "gamma.csv"
+swelling_path = path + "swelling.csv"
 
-path = "../output/log/chb_splitting_ch_biot_"
-si = "semi_imp_"
-imp = "imp_"
-
-
-GAMMA = [4, 2, 1, 0.5, 0.25]
-SWELLING = [0.5, 0.25, 0.125, 0.0625]
+energies_gamma = pd.read_csv(gamma_path, index_col=0)
+energies_swelling = pd.read_csv(swelling_path, index_col=0)
 
 line_styles = ["-", "--", "-.", ":", (0, (5, 2)), (0, (3, 1, 1, 1))]
 # Vibrant colors
@@ -22,11 +20,9 @@ plt.rcParams["font.size"] = 16
 
 
 plt.figure()
+i = 0
+for g, energy in reversed(list(energies_gamma.items())):
 
-for i, g in enumerate(GAMMA):
-
-    df = pd.read_excel(path + si + "gamma_" + str(g) + ".xlsx")
-    energy = df["Total_Energy"]
     plt.plot(
         energy,
         color=colors_dark[i],
@@ -34,7 +30,7 @@ for i, g in enumerate(GAMMA):
         linewidth=2,
         linestyle=line_styles[i],
     )
-    print(energy)
+    i += 1
     # df = pd.read_excel(path+imp+'gamma_'+str(g)+'.xlsx')
     # energy = df['Total_Energy']
     # plt.plot(energy, color = colors_light[i], label=r'$\gamma$='+f'{g}', linewidth = 2, linestyle =line_styles[i])
@@ -44,25 +40,24 @@ plt.grid(True, alpha=0.8, linestyle=":", linewidth=0.5)
 plt.ylabel("Total energy ")
 plt.xlabel("Time step")
 # Save as PDF (best for LaTeX)
-plt.savefig("plot_energy_gamma.pdf", bbox_inches="tight", dpi=300)
+# plt.savefig("plot_energy_gamma.pdf", bbox_inches="tight", dpi=300)
 
 plt.show()
 
 
 plt.figure()
+i = 0
 
-for i, xi in enumerate(SWELLING):
+for s, energy in reversed(list(energies_swelling.items())):
 
-    df = pd.read_excel(path + si + "swelling_" + str(xi) + ".xlsx")
-    energy = df["Total_Energy"]
     plt.plot(
         energy,
         color=colors_dark[i],
-        label=r"$\xi$=" + f"{xi}",
+        label=r"$\xi$=" + f"{s}",
         linewidth=2,
         linestyle=line_styles[i],
     )
-
+    i += 1
 plt.legend()
 plt.grid(True, alpha=0.8, linestyle=":", linewidth=0.5)
 plt.ylabel("Total energy ")
