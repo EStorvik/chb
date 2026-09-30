@@ -31,15 +31,11 @@ for g, energy in reversed(list(energies_gamma.items())):
         linestyle=line_styles[i],
     )
     i += 1
-    # df = pd.read_excel(path+imp+'gamma_'+str(g)+'.xlsx')
-    # energy = df['Total_Energy']
-    # plt.plot(energy, color = colors_light[i], label=r'$\gamma$='+f'{g}', linewidth = 2, linestyle =line_styles[i])
 
 plt.legend()
 plt.grid(True, alpha=0.8, linestyle=":", linewidth=0.5)
 plt.ylabel("Total energy ")
 plt.xlabel("Time step")
-# Save as PDF (best for LaTeX)
 # plt.savefig("plot_energy_gamma.pdf", bbox_inches="tight", dpi=300)
 
 plt.show()
@@ -62,7 +58,6 @@ plt.legend()
 plt.grid(True, alpha=0.8, linestyle=":", linewidth=0.5)
 plt.ylabel("Total energy ")
 plt.xlabel("Time step")
-# Save as PDF (best for LaTeX)
-plt.savefig("plot_energy_swelling.pdf", bbox_inches="tight", dpi=300)
+# plt.savefig("plot_energy_swelling.pdf", bbox_inches="tight", dpi=300)
 
 plt.show()
