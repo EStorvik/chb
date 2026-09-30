@@ -253,7 +253,7 @@ solverCH.rtol = 1e-6
 # vizP = chb.visualization.PyvistaVizualization(Vb.sub(2), xiB_n.sub(2), 0.0, "pressure")
 
 # Output file
-filenamepath = "../output/chb_splitting_ch_biot_semi_imp_"
+filenamepath = "output/chb_splitting_ch_biot_semi_imp_"
 output_file_pf = XDMFFile(MPI.COMM_WORLD, filenamepath + f"{ell}ell_pf.xdmf", "w")
 output_file_p = XDMFFile(MPI.COMM_WORLD, filenamepath + f"{ell}ell_p.xdmf", "w")
 output_file_u = XDMFFile(MPI.COMM_WORLD, filenamepath + f"{ell}ell_u.xdmf", "w")
