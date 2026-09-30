@@ -28,16 +28,16 @@ gamma_params = [0.25, 0.5, 1, 2, 4]
 swelling_params = [0.0625, 0.125, 0.25, 0.5]
 
 
-# for g in gamma:
-#     parameters = Parameters(gamma = g, swelling = 0.5)
-#     log_data = method(parameters)
-#     energies_gamma.update({g: log_data["Total_Energy"]})
+for g in gamma_params:
+    parameters = Parameters(gamma=g, swelling=0.5)
+    log_data = method(parameters)
+    energies_gamma.update({g: log_data["Total_Energy"]})
 
-# energies_gamma_df = pd.DataFrame(energies_gamma)
+energies_gamma_df = pd.DataFrame(energies_gamma)
 
-# output_path_gamma = Path("output/energies_gamma.csv")
-# output_path_gamma.parent.mkdir(parents=True, exist_ok=True)
-# energies_gamma_df.to_csv(output_path_gamma)
+output_path_gamma = Path("output/energies_gamma.csv")
+output_path_gamma.parent.mkdir(parents=True, exist_ok=True)
+energies_gamma_df.to_csv(output_path_gamma)
 
 
 for s in swelling_params:

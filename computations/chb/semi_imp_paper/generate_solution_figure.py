@@ -263,6 +263,16 @@ output_file_pf.write_mesh(msh)
 output_file_p.write_mesh(msh)
 output_file_u.write_mesh(msh)
 
+pf_out, _ = xiCH.split()
+output_file_pf.write_function(pf_out, 0)
+collapsed_Vu, dofs_u = Vb.sub(0).collapse()
+u_out = Function(collapsed_Vu)
+u_out.x.array[:] = xiB_n.x.array[dofs_u]
+u_out.x.scatter_forward()
+_, _, p_out = xiB_n.split()
+output_file_p.write_function(p_out, 0)
+output_file_u.write_function(u_out, 0)
+
 
 # Energy
 def energy_i(pf, dx):
@@ -358,7 +368,11 @@ for i in range(num_time_steps):
     # Output
     pf_out, _ = xiCH.split()
     output_file_pf.write_function(pf_out, t)
-    u_out, _, p_out = xiB_n.split()
+    collapsed_Vu, dofs_u = Vb.sub(0).collapse()
+    u_out = Function(collapsed_Vu)
+    u_out.x.array[:] = xiB_n.x.array[dofs_u]
+    u_out.x.scatter_forward()
+    _, _, p_out = xiB_n.split()
     output_file_p.write_function(p_out, t)
     output_file_u.write_function(u_out, t)
 
